@@ -16,6 +16,15 @@ String _currencySymbol(Map<String, dynamic> bill) {
   return 'сом';
 }
 
+/// Django `DecimalField` serializes to a JSON **string** (e.g. "100.00"),
+/// not a number, so a plain `as num?` cast blows up. Accept either form.
+double _asDouble(dynamic v) {
+  if (v == null) return 0;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v) ?? 0;
+  return 0;
+}
+
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -40,9 +49,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       setState(() => _isLoading = false);
       return;
     }
+    setState(() => _isLoading = true);
     try {
       final result = await auth.api.getUserBills();
-      final raw = result['results'] ?? result['bills'] ?? [];
+      final raw = result['bills'] ?? result['results'] ?? [];
       if (mounted) {
         setState(() {
           _bills = List<Map<String, dynamic>>.from(raw is List ? raw : []);
@@ -195,9 +205,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         List<Map<String, dynamic>>.from(bill['people'] ?? []);
     final assignments =
         Map<String, dynamic>.from(bill['assignments'] ?? {});
-    final total = (bill['total'] as num?)?.toDouble() ?? 0;
-    final servicePercent =
-        (bill['service_charge_percent'] as num?)?.toDouble() ?? 0;
+    final total = _asDouble(bill['total']);
+    final servicePercent = _asDouble(bill['service_charge_percent']);
 
     showModalBottomSheet(
       context: context,
@@ -279,7 +288,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             style: const TextStyle(
                                 color: AppTheme.textSecondary)),
                         Text(
-                          '${(item['price'] as num?)?.toStringAsFixed(0) ?? '0'} ${_currencySymbol(bill)}',
+                          '${_asDouble(item['price']).toStringAsFixed(0)} ${_currencySymbol(bill)}',
                           style: const TextStyle(
                               color: AppTheme.textPrimary),
                         ),
@@ -299,28 +308,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: people.map((p) {
-                  double personTotal = 0;
                   final personId = p['id']?.toString() ?? '';
-                  for (final entry in assignments.entries) {
-                    final assigned = List<String>.from(
-                        entry.value as List? ?? []);
-                    if (assigned.contains(personId)) {
-                      final item = items.firstWhere(
-                        (i) =>
-                            i['id']?.toString() == entry.key ||
-                            items.indexOf(i).toString() == entry.key,
-                        orElse: () => {},
-                      );
-                      if (item.isNotEmpty) {
-                        personTotal +=
-                            ((item['price'] as num?)?.toDouble() ?? 0) /
-                                assigned.length;
-                      }
-                    }
-                  }
-                  if (servicePercent > 0) {
-                    personTotal += personTotal * servicePercent / 100;
-                  }
+                  final personTotal = _personTotalFromBill(
+                    items: items,
+                    assignments: assignments,
+                    personId: personId,
+                    servicePercent: servicePercent,
+                  );
                   return LiquidGlass(
                     borderRadius: BorderRadius.circular(12),
                     padding: const EdgeInsets.symmetric(
@@ -346,6 +340,53 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
       ),
     );
+  }
+
+  /// Computes a person's share of a saved bill, supporting both the legacy
+  /// assignment format (`{itemId: [personId, ...]}`) and the unit-count
+  /// format (`{itemId: {personId: count}}`).
+  double _personTotalFromBill({
+    required List<Map<String, dynamic>> items,
+    required Map<String, dynamic> assignments,
+    required String personId,
+    required double servicePercent,
+  }) {
+    double total = 0;
+    for (final entry in assignments.entries) {
+      final itemKey = entry.key;
+      final raw = entry.value;
+
+      Map<String, dynamic> item = const {};
+      for (var i = 0; i < items.length; i++) {
+        final candidate = items[i];
+        if (candidate['id']?.toString() == itemKey || i.toString() == itemKey) {
+          item = candidate;
+          break;
+        }
+      }
+      if (item.isEmpty) continue;
+
+      final price = _asDouble(item['price']);
+
+      if (raw is Map) {
+        // New format: per-person unit counts.
+        final v = raw[personId];
+        final count = v is num
+            ? v.toInt()
+            : (v is String ? (int.tryParse(v) ?? 0) : 0);
+        if (count > 0) total += price * count;
+      } else if (raw is List) {
+        // Legacy format: item is split equally among assigned people.
+        final assigned = raw.map((e) => e.toString()).toList();
+        if (assigned.contains(personId) && assigned.isNotEmpty) {
+          total += price / assigned.length;
+        }
+      }
+    }
+    if (servicePercent > 0) {
+      total += total * servicePercent / 100;
+    }
+    return total;
   }
 
   String _formatDate(String? s) {
@@ -415,7 +456,7 @@ class _BillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = (bill['total'] as num?)?.toDouble() ?? 0;
+    final total = _asDouble(bill['total']);
     final people = List.from(bill['people'] ?? []);
     final items = List.from(bill['items'] ?? []);
     final title = bill['title']?.toString();

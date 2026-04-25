@@ -53,7 +53,7 @@ class _SplitScreenState extends State<SplitScreen>
             const SizedBox(height: 12),
             TextField(
               controller: priceCtrl,
-              decoration: const InputDecoration(hintText: 'Цена'),
+              decoration: const InputDecoration(hintText: 'Цена за 1 шт.'),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
@@ -259,8 +259,14 @@ class _SplitScreenState extends State<SplitScreen>
             SafeArea(
               child: Consumer<BillProvider>(
                 builder: (context, provider, _) {
-                  final unassignedTotal = provider.unassignedItems
-                      .fold<double>(0, (s, i) => s + i.price);
+                  // Sum of item-cost not yet covered by anyone. Items with
+                  // shares > quantity contribute 0 (over-allocated). Items
+                  // with shares < quantity contribute the leftover units'
+                  // worth. Items with no shares contribute their full cost.
+                  final unassignedTotal = provider.items.fold<double>(0, (s, i) {
+                    final remaining = provider.getRemainingUnits(i.id);
+                    return remaining > 0 ? s + i.price * remaining : s;
+                  });
 
                   return Column(
                     children: [
@@ -669,14 +675,14 @@ class _ItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAssigned = assignedPeople.isNotEmpty;
+    // Items can always be dragged — extra drops on new people share the
+    // item proportionally (handled in BillProvider).
     return Draggable<BillItem>(
       data: item,
       feedback: Material(
         color: Colors.transparent,
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             gradient: AppTheme.primaryGradient,
             borderRadius: BorderRadius.circular(12),
@@ -689,101 +695,241 @@ class _ItemTile extends StatelessWidget {
             ],
           ),
           child: Text(
-            '${item.name}  ${item.price.toStringAsFixed(0)} ${provider.currency.symbol}',
+            '${item.name}  ×1  ${item.price.toStringAsFixed(0)} ${provider.currency.symbol}',
             style: const TextStyle(
                 color: Color(0xFF1A1A1A), fontWeight: FontWeight.w600),
           ),
         ),
       ),
-      childWhenDragging:
-          Opacity(opacity: 0.3, child: _card(context, isAssigned)),
-      child: _card(context, isAssigned),
+      childWhenDragging: Opacity(opacity: 0.3, child: _card(context)),
+      child: _card(context),
     );
   }
 
-  Widget _card(BuildContext context, bool isAssigned) {
+  Widget _card(BuildContext context) {
+    final remaining = provider.getRemainingUnits(item.id);
+    final totalAssigned = provider.getTotalAssignedUnits(item.id);
+    final isShared = totalAssigned > item.quantity;
+    final isFullyAssigned = totalAssigned == item.quantity;
+    final isPartiallyAssigned = totalAssigned > 0 && totalAssigned < item.quantity;
+
+    Color bgColor = AppTheme.surface;
+    Color borderColor = Colors.white.withValues(alpha: 0.06);
+    if (isShared) {
+      bgColor = AppTheme.primary.withValues(alpha: 0.08);
+      borderColor = AppTheme.primary.withValues(alpha: 0.30);
+    } else if (isFullyAssigned) {
+      bgColor = const Color(0xFF22C55E).withValues(alpha: 0.08);
+      borderColor = const Color(0xFF22C55E).withValues(alpha: 0.30);
+    } else if (isPartiallyAssigned) {
+      bgColor = AppTheme.accent.withValues(alpha: 0.08);
+      borderColor = AppTheme.accent.withValues(alpha: 0.25);
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isAssigned
-            ? AppTheme.primary.withValues(alpha: 0.10)
-            : AppTheme.surface,
+        color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isAssigned
-              ? AppTheme.primary.withValues(alpha: 0.35)
-              : Colors.white.withValues(alpha: 0.06),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
-          // Mini assigned avatars
+          // Person avatars — tap to unassign 1 share
           if (assignedPeople.isNotEmpty) ...[
             Row(
               mainAxisSize: MainAxisSize.min,
-              children: assignedPeople.take(3).map((pid) {
+              children: assignedPeople.take(4).map((pid) {
                 final person =
                     provider.people.firstWhere((p) => p.id == pid);
-                return Container(
-                  width: 22,
-                  height: 22,
-                  margin: const EdgeInsets.only(right: 3),
-                  decoration: BoxDecoration(
-                    color: person.avatarColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.background, width: 1.5),
-                  ),
-                  child: Center(
-                    child: Text(
-                      person.name[0].toUpperCase(),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold),
-                    ),
+                final unitCount = provider.getPersonUnitCount(item.id, pid);
+                return GestureDetector(
+                  onTap: () => provider.unassignOneUnit(item.id, pid),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: person.avatarColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: AppTheme.background, width: 1.5),
+                        ),
+                        child: Center(
+                          child: Text(
+                            person.name[0].toUpperCase(),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      if (unitCount > 1)
+                        Positioned(
+                          bottom: -2,
+                          right: 2,
+                          child: Container(
+                            width: 13,
+                            height: 13,
+                            decoration: BoxDecoration(
+                              color: AppTheme.accent,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: AppTheme.background, width: 1),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$unitCount',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 7,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
           ],
+
+          // Name + subtitle
           Expanded(
-            child: Text(
-              item.name,
-              style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w500),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.name,
+                  style: TextStyle(
+                    color: isFullyAssigned
+                        ? AppTheme.textSecondary
+                        : AppTheme.textPrimary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  '${item.price.toStringAsFixed(0)} × ${item.quantity} = ${item.totalPrice.toStringAsFixed(0)} ${provider.currency.symbol}',
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 11),
+                ),
+              ],
             ),
           ),
-          // Split badge
-          if (assignedPeople.length > 1)
+
+          // State badge
+          if (isShared)
             Container(
-              margin: const EdgeInsets.only(right: 8),
+              margin: const EdgeInsets.only(right: 6),
               padding:
-                  const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.accent.withValues(alpha: 0.2),
+                color: AppTheme.primary.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                '÷${assignedPeople.length}',
+                'на $totalAssigned',
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )
+          else if (isFullyAssigned)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Icon(Icons.check_circle_rounded,
+                  color: const Color(0xFF22C55E).withValues(alpha: 0.8),
+                  size: 16),
+            )
+          else if (isPartiallyAssigned)
+            Container(
+              margin: const EdgeInsets.only(right: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$remaining ост.',
                 style: const TextStyle(
                   color: AppTheme.accent,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-          Text(
-            '${item.price.toStringAsFixed(0)} ${provider.currency.symbol}',
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+
+          // Quantity controls
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: item.quantity > 1
+                    ? () => provider.setItemQuantity(
+                        item.id, item.quantity - 1)
+                    : null,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Icon(Icons.remove_rounded,
+                      size: 14,
+                      color: item.quantity > 1
+                          ? AppTheme.textSecondary
+                          : AppTheme.textSecondary.withValues(alpha: 0.25)),
+                ),
+              ),
+              SizedBox(
+                width: 28,
+                child: Center(
+                  child: Text(
+                    '${item.quantity}',
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () =>
+                    provider.setItemQuantity(item.id, item.quantity + 1),
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.25)),
+                  ),
+                  child: const Icon(Icons.add_rounded,
+                      size: 14, color: AppTheme.primary),
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 8),
+
+          // Delete
           GestureDetector(
             onTap: () => provider.removeItem(item.id),
             child: Icon(
@@ -812,12 +958,7 @@ class _PeopleDropRow extends StatelessWidget {
           return DragTarget<BillItem>(
             onWillAcceptWithDetails: (_) => true,
             onAcceptWithDetails: (details) {
-              final item = details.data;
-              if (provider.isItemAssignedToPerson(item.id, person.id)) {
-                provider.unassignItemFromPerson(item.id, person.id);
-              } else {
-                provider.assignItemToPerson(item.id, person.id);
-              }
+              provider.assignOneUnit(details.data.id, person.id);
             },
             builder: (context, candidates, _) {
               final hovering = candidates.isNotEmpty;

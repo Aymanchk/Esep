@@ -180,7 +180,10 @@ def chat_messages_view(request, room_id):
     messages = room.messages.all()
     before = request.query_params.get("before")
     if before:
-        messages = messages.filter(id__lt=int(before))
+        try:
+            messages = messages.filter(id__lt=int(before))
+        except ValueError:
+            return Response({"error": "Неверный параметр before"}, status=status.HTTP_400_BAD_REQUEST)
     messages = messages.order_by("-created_at")[:50]
 
     return Response(
@@ -230,6 +233,17 @@ class BillListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return Bill.objects.filter(user=self.request.user)
 
+    def list(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        serializer = self.get_serializer(qs, many=True)
+        return Response({"bills": serializer.data})
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response({"bill": serializer.data}, status=status.HTTP_201_CREATED)
+
 
 class BillDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = BillSerializer
@@ -237,6 +251,16 @@ class BillDetailView(generics.RetrieveDestroyAPIView):
 
     def get_queryset(self):
         return Bill.objects.filter(user=self.request.user)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response({"bill": serializer.data})
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
 
 # --- Debts ---
@@ -258,9 +282,18 @@ def debts_view(request):
 
     # POST — create debt
     serializer = DebtSerializer(data=request.data, context={"request": request})
-    if serializer.is_valid():
+    if not serializer.is_valid():
+        return Response(
+            {"error": next(iter(serializer.errors.values()))[0] if serializer.errors else "Ошибка"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
         debt = serializer.save()
-        # Create notification for debtor
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Notify debtor (if not the creator) and creditor (if not the creator).
+    if debt.from_user_id != request.user.id:
         Notification.objects.create(
             user=debt.from_user,
             type="debt_created",
@@ -268,13 +301,17 @@ def debts_view(request):
             body=f"Вы должны {debt.to_user.first_name} {debt.amount} сом",
             data={"debt_id": debt.id},
         )
-        return Response(
-            DebtSerializer(debt, context={"request": request}).data,
-            status=status.HTTP_201_CREATED,
+    if debt.to_user_id != request.user.id:
+        Notification.objects.create(
+            user=debt.to_user,
+            type="debt_created",
+            title="Новый долг",
+            body=f"{debt.from_user.first_name} должен вам {debt.amount} сом",
+            data={"debt_id": debt.id},
         )
     return Response(
-        {"error": next(iter(serializer.errors.values()))[0]},
-        status=status.HTTP_400_BAD_REQUEST,
+        DebtSerializer(debt, context={"request": request}).data,
+        status=status.HTTP_201_CREATED,
     )
 
 

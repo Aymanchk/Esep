@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../services/api_service.dart';
@@ -13,7 +12,6 @@ class ChatProvider extends ChangeNotifier {
   bool _isLoading = false;
   WebSocketChannel? _wsChannel;
   StreamSubscription? _wsSubscription;
-  int? _currentRoomId;
 
   ChatProvider(this._api);
 
@@ -53,25 +51,32 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> sendMessage(int roomId, String text) async {
-    // Send via REST (also broadcasts through WebSocket consumer)
+    // The REST endpoint just inserts a row; it does NOT push through the
+    // WebSocket consumer. So we append the server's response to our local
+    // list ourselves, and only fall back to a full reload if the request
+    // fails. The duplicate guard handles the case where a WS broadcast
+    // races us.
     try {
-      await _api.sendMessage(roomId, text);
-      // If not connected via WS, reload messages
-      if (_currentRoomId != roomId) {
-        await loadMessages(roomId);
+      final newMsg = await _api.sendMessage(roomId, text);
+      _messagesByRoom.putIfAbsent(roomId, () => []);
+      final id = newMsg['id'];
+      final exists =
+          id != null && _messagesByRoom[roomId]!.any((m) => m['id'] == id);
+      if (!exists) {
+        _messagesByRoom[roomId]!.add(newMsg);
+        notifyListeners();
       }
-    } catch (e) {
-      // fallback
+    } catch (_) {
+      await loadMessages(roomId);
     }
   }
 
   void connectToRoom(int roomId) {
     disconnectFromRoom();
-    _currentRoomId = roomId;
 
-    final wsBase = Platform.isAndroid
-        ? 'ws://10.0.2.2:8000'
-        : 'ws://localhost:8000';
+    // Reuse the same host the REST client resolved (LAN IP on real device,
+    // 10.0.2.2 on Android emulator, localhost on iOS sim / desktop).
+    final wsBase = 'ws://${ApiService.host}:${ApiService.port}';
     final token = _api.token;
 
     _wsChannel = WebSocketChannel.connect(
@@ -99,7 +104,6 @@ class ChatProvider extends ChangeNotifier {
     _wsChannel?.sink.close();
     _wsChannel = null;
     _wsSubscription = null;
-    _currentRoomId = null;
   }
 
   Future<void> markAsRead(int roomId) async {

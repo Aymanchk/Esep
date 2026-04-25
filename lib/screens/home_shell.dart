@@ -17,14 +17,22 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
+  int _historyKey = 0;
 
-  static const _screens = [
-    HomeScreen(),
-    HistoryScreen(),
-    DebtsScreen(),
-    ChatListScreen(),
-    ProfileScreen(),
+  List<Widget> get _screens => [
+    const HomeScreen(),
+    HistoryScreen(key: ValueKey(_historyKey)),
+    const DebtsScreen(),
+    const ChatListScreen(),
+    const ProfileScreen(),
   ];
+
+  void _onTabTap(int index) {
+    if (index == 1 && _currentIndex != 1) {
+      _historyKey++;
+    }
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +48,7 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: GlassBottomNavBar(
         currentIndex: _currentIndex,
         chatBadge: chatBadge,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: _onTabTap,
       ),
     );
   }

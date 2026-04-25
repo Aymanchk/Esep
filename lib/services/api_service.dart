@@ -5,18 +5,22 @@ import 'package:http/http.dart' as http;
 class ApiService {
   static const _timeout = Duration(seconds: 10);
 
-  // Set to true when running on a real device with "adb reverse tcp:8000 tcp:8000".
-  // Set to false when running on the Android emulator.
-  static const _useRealDevice = false;
+  /// Override the backend host at launch:
+  ///   flutter run --dart-define=FS_HOST=192.168.1.42
+  /// Defaults: 10.0.2.2 on Android emulator, localhost otherwise.
+  static const _hostOverride = String.fromEnvironment('FS_HOST');
+  static const _portOverride =
+      String.fromEnvironment('FS_PORT', defaultValue: '8000');
 
-  static String get _baseUrl {
-    if (Platform.isAndroid) {
-      return _useRealDevice
-          ? 'http://localhost:8000/api'
-          : 'http://10.0.2.2:8000/api';
-    }
-    return 'http://localhost:8000/api';
+  static String get host {
+    if (_hostOverride.isNotEmpty) return _hostOverride;
+    if (Platform.isAndroid) return '10.0.2.2';
+    return 'localhost';
   }
+
+  static String get port => _portOverride;
+
+  static String get _baseUrl => 'http://$host:$port/api';
 
   String? _token;
 
@@ -115,9 +119,9 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> searchUsers(String query) async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/users/search/?q=$query'),
+      Uri.parse('$_baseUrl/users/search/?q=${Uri.encodeQueryComponent(query)}'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     final body = _handleResponse(response);
     final results = body.containsKey('results') ? body['results'] : [];
     return List<Map<String, dynamic>>.from(results);
@@ -130,7 +134,7 @@ class ApiService {
     required double serviceChargePercent,
     required List<Map<String, dynamic>> items,
     required List<Map<String, dynamic>> people,
-    required Map<String, List<String>> assignments,
+    required Map<String, dynamic> assignments,
     String? title,
     String? category,
     String? currency,
@@ -150,7 +154,7 @@ class ApiService {
         if (currency != null) 'currency': currency,
         if (splitMode != null) 'split_mode': splitMode,
       }),
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -158,7 +162,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$_baseUrl/bills/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -166,7 +170,7 @@ class ApiService {
     final response = await http.delete(
       Uri.parse('$_baseUrl/bills/$id/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return response.statusCode == 200 || response.statusCode == 204;
   }
 
@@ -176,7 +180,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$_baseUrl/chat/rooms/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     final body = _handleResponse(response);
     return List<Map<String, dynamic>>.from(body['results'] ?? body['rooms'] ?? []);
   }
@@ -186,7 +190,7 @@ class ApiService {
       Uri.parse('$_baseUrl/chat/rooms/'),
       headers: _headers,
       body: jsonEncode({'participants': participantIds}),
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -196,7 +200,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse(url),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     final body = _handleResponse(response);
     return List<Map<String, dynamic>>.from(body['messages'] ?? []);
   }
@@ -206,7 +210,7 @@ class ApiService {
       Uri.parse('$_baseUrl/chat/rooms/$roomId/send/'),
       headers: _headers,
       body: jsonEncode({'text': text}),
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -214,7 +218,7 @@ class ApiService {
     await http.post(
       Uri.parse('$_baseUrl/chat/rooms/$roomId/read/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
   }
 
   // --- Debts ---
@@ -223,10 +227,12 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$_baseUrl/debts/?show=$show'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
+  /// Creates a debt. Caller specifies both [fromUserId] (debtor) and
+  /// [toUserId] (creditor); current authenticated user must be one of them.
   Future<Map<String, dynamic>> createDebt({
     required int fromUserId,
     required int toUserId,
@@ -244,7 +250,7 @@ class ApiService {
         if (billId != null) 'bill': billId,
         'description': description,
       }),
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -252,7 +258,7 @@ class ApiService {
     final response = await http.post(
       Uri.parse('$_baseUrl/debts/$debtId/pay/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -260,7 +266,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$_baseUrl/debts/summary/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -270,7 +276,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$_baseUrl/groups/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -285,7 +291,7 @@ class ApiService {
         'name': name,
         'member_ids': memberIds,
       }),
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -301,7 +307,7 @@ class ApiService {
       Uri.parse('$_baseUrl/groups/$groupId/'),
       headers: _headers,
       body: jsonEncode(body),
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -309,7 +315,7 @@ class ApiService {
     final response = await http.delete(
       Uri.parse('$_baseUrl/groups/$groupId/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return response.statusCode == 200;
   }
 
@@ -319,7 +325,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$_baseUrl/notifications/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
@@ -327,14 +333,14 @@ class ApiService {
     await http.post(
       Uri.parse('$_baseUrl/notifications/read/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
   }
 
   Future<void> markNotificationRead(int notificationId) async {
     await http.post(
       Uri.parse('$_baseUrl/notifications/$notificationId/read/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
   }
 
   // --- Statistics ---
@@ -343,22 +349,37 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$_baseUrl/stats/'),
       headers: _headers,
-    );
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
   // --- Helpers ---
 
+  /// Tolerant response handler: server may return a JSON object or a JSON
+  /// array; we normalize to a map. Lists are wrapped as {"results": [...]}.
   Map<String, dynamic> _handleResponse(http.Response response) {
-    final Map<String, dynamic> body;
+    dynamic decoded;
     try {
-      body = jsonDecode(response.body) as Map<String, dynamic>;
+      decoded = jsonDecode(response.body);
     } catch (_) {
       throw ApiException(
         statusCode: response.statusCode,
         message: 'Ошибка сервера (${response.statusCode})',
       );
     }
+
+    Map<String, dynamic> body;
+    if (decoded is Map<String, dynamic>) {
+      body = decoded;
+    } else if (decoded is List) {
+      body = {'results': decoded};
+    } else {
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: 'Неожиданный формат ответа',
+      );
+    }
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     }

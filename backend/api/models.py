@@ -43,6 +43,9 @@ class Bill(models.Model):
     people = models.JSONField(default=list)
     assignments = models.JSONField(default=dict)
     title = models.CharField(max_length=255, blank=True, default="")
+    currency = models.CharField(max_length=10, blank=True, default="KGS")
+    category = models.CharField(max_length=50, blank=True, default="")
+    split_mode = models.CharField(max_length=20, blank=True, default="byItems")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

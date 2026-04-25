@@ -65,6 +65,9 @@ class BillSerializer(serializers.ModelSerializer):
             "people",
             "assignments",
             "title",
+            "currency",
+            "category",
+            "split_mode",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
@@ -77,8 +80,8 @@ class BillSerializer(serializers.ModelSerializer):
 class DebtSerializer(serializers.ModelSerializer):
     from_user = UserSerializer(read_only=True)
     to_user = UserSerializer(read_only=True)
-    from_user_id = serializers.IntegerField(write_only=True)
-    to_user_id = serializers.IntegerField(write_only=True)
+    from_user_id = serializers.IntegerField(write_only=True, required=False)
+    to_user_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = Debt
@@ -90,10 +93,31 @@ class DebtSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "paid_at"]
 
     def create(self, validated_data):
-        from_user_id = validated_data.pop("from_user_id")
-        to_user_id = validated_data.pop("to_user_id")
-        validated_data["from_user"] = User.objects.get(id=from_user_id)
-        validated_data["to_user"] = User.objects.get(id=to_user_id)
+        from_user_id = validated_data.pop("from_user_id", None)
+        to_user_id = validated_data.pop("to_user_id", None)
+        request_user = self.context["request"].user
+
+        if from_user_id and to_user_id:
+            # Caller specified direction — must include current user.
+            if request_user.id not in (from_user_id, to_user_id):
+                raise serializers.ValidationError(
+                    "Вы должны быть участником долга"
+                )
+            try:
+                validated_data["from_user"] = User.objects.get(id=from_user_id)
+                validated_data["to_user"] = User.objects.get(id=to_user_id)
+            except User.DoesNotExist:
+                raise serializers.ValidationError("Пользователь не найден")
+        elif to_user_id:
+            # Backward-compat: current user owes selected user.
+            validated_data["from_user"] = request_user
+            try:
+                validated_data["to_user"] = User.objects.get(id=to_user_id)
+            except User.DoesNotExist:
+                raise serializers.ValidationError("Пользователь не найден")
+        else:
+            raise serializers.ValidationError("Не указаны участники долга")
+
         return super().create(validated_data)
 
 

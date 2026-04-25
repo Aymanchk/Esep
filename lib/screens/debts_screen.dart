@@ -2,12 +2,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/debt_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/liquid_glass.dart';
 
 const _defaultCurrencySymbol = 'сом';
+
+/// Django `DecimalField` serializes to a JSON string ("100.00"), not a number.
+double _asDouble(dynamic v) {
+  if (v == null) return 0;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v) ?? 0;
+  return 0;
+}
 
 class DebtsScreen extends StatefulWidget {
   const DebtsScreen({super.key});
@@ -115,8 +124,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                           itemCount: dp.balances.length,
                           itemBuilder: (_, i) {
                             final b = dp.balances[i];
-                            final amount =
-                                (b['balance'] as num?)?.toDouble() ?? 0;
+                            final amount = _asDouble(b['balance']);
                             final name = b['name']?.toString() ?? '';
                             final isPos = amount > 0;
                             return Container(
@@ -257,6 +265,8 @@ class _DebtsScreenState extends State<DebtsScreen>
     List<Map<String, dynamic>> searchResults = [];
     Map<String, dynamic>? selectedUser;
     bool searching = false;
+    // true = current user owes selected user; false = selected user owes current user.
+    bool iOwe = true;
     final searchCtrl = TextEditingController();
     Timer? debounce;
 
@@ -269,6 +279,71 @@ class _DebtsScreenState extends State<DebtsScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Direction toggle
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08)),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () =>
+                              setDialogState(() => iOwe = true),
+                          child: Container(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: iOwe
+                                  ? AppTheme.danger.withValues(alpha: 0.18)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Я должен',
+                                style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () =>
+                              setDialogState(() => iOwe = false),
+                          child: Container(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: !iOwe
+                                  ? AppTheme.success.withValues(alpha: 0.18)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Мне должны',
+                                style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: searchCtrl,
                   decoration: InputDecoration(
@@ -314,29 +389,57 @@ class _DebtsScreenState extends State<DebtsScreen>
                     ),
                   ),
                 if (searchResults.isNotEmpty && selectedUser == null)
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: searchResults.length,
-                      itemBuilder: (_, i) {
-                        final user = searchResults[i];
-                        return ListTile(
-                          dense: true,
-                          title: Text(user['name'] as String,
-                              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
-                          subtitle: Text(user['email'] as String? ?? '',
-                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                          onTap: () {
-                            setDialogState(() {
-                              selectedUser = user;
-                              searchResults = [];
-                              searchCtrl.text = user['name'] as String;
-                            });
-                          },
-                        );
-                      },
-                    ),
+                  // ListView inside SingleChildScrollView inside AlertDialog
+                  // triggers parentDataDirty assertions on iOS — render the
+                  // results as a plain Column instead.
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: searchResults.take(8).map((user) {
+                      final name = user['name'] as String? ?? '';
+                      final avatarUrl = user['avatar'] as String?;
+                      return InkWell(
+                        onTap: () {
+                          setDialogState(() {
+                            selectedUser = user;
+                            searchResults = [];
+                            searchCtrl.text = name;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: AppTheme.primary,
+                                backgroundImage: avatarUrl != null
+                                    ? CachedNetworkImageProvider(avatarUrl)
+                                    : null,
+                                child: avatarUrl == null
+                                    ? Text(
+                                        name.isNotEmpty
+                                            ? name[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                            color: Color(0xFF1A1A1A),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13))
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(name,
+                                    style: const TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 const SizedBox(height: 12),
                 TextField(
@@ -381,9 +484,11 @@ class _DebtsScreenState extends State<DebtsScreen>
                 }
                 Navigator.pop(ctx);
                 final dp = context.read<DebtProvider>();
+                final me = auth.userId!;
+                final them = selectedUser!['id'] as int;
                 final success = await dp.createDebt(
-                  fromUserId: auth.userId!,
-                  toUserId: selectedUser!['id'] as int,
+                  fromUserId: iOwe ? me : them,
+                  toUserId: iOwe ? them : me,
                   amount: amount,
                   description: descCtrl.text.trim(),
                 );
@@ -404,7 +509,7 @@ class _DebtsScreenState extends State<DebtsScreen>
   }
 
   void _showQRModal(Map<String, dynamic> debt) {
-    final amount = (debt['amount'] as num?)?.toDouble() ?? 0;
+    final amount = _asDouble(debt['amount']);
     final from = Map<String, dynamic>.from(debt['from_user'] as Map? ?? {});
     final to = Map<String, dynamic>.from(debt['to_user'] as Map? ?? {});
     final qrData =
@@ -503,7 +608,7 @@ class _DebtCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final amount = (debt['amount'] as num?)?.toDouble() ?? 0;
+    final amount = _asDouble(debt['amount']);
     final isPaid = debt['is_paid'] as bool? ?? false;
     final from = Map<String, dynamic>.from(debt['from_user'] as Map? ?? {});
     final to = Map<String, dynamic>.from(debt['to_user'] as Map? ?? {});

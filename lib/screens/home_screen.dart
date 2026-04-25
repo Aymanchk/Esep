@@ -35,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       context.read<DebtProvider>().loadSummary();
       final result = await auth.api.getUserBills();
-      final raw = result['results'] ?? result['bills'] ?? [];
+      final raw = result['bills'] ?? result['results'] ?? [];
       if (mounted) {
         setState(() {
           _recentBills =
@@ -428,7 +428,11 @@ class _BillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = (bill['total'] as num?)?.toDouble() ?? 0;
+    // Django DecimalField serializes to a JSON string; parse defensively.
+    final rawTotal = bill['total'];
+    final total = rawTotal is num
+        ? rawTotal.toDouble()
+        : double.tryParse(rawTotal?.toString() ?? '') ?? 0;
     final people = List.from(bill['people'] ?? []);
     final createdAt = bill['created_at']?.toString();
     final title = bill['title']?.toString();

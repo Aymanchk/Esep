@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/liquid_glass.dart';
 import '../utils/share_helper.dart';
+import 'home_shell.dart';
 
 class SummaryScreen extends StatefulWidget {
   const SummaryScreen({super.key});
@@ -59,9 +60,16 @@ class _SummaryScreenState extends State<SummaryScreen>
       await auth.api.saveBill(
         total: provider.total,
         serviceChargePercent: provider.serviceChargePercent,
-        items: provider.items.map((i) => {'name': i.name, 'price': i.price}).toList(),
+        items: provider.items
+            .map((i) => {
+                  'id': i.id,
+                  'name': i.name,
+                  'price': i.price,
+                  'quantity': i.quantity,
+                })
+            .toList(),
         people: provider.people.map((p) => {'name': p.name, 'id': p.id}).toList(),
-        assignments: provider.assignments.map((k, v) => MapEntry(k, v.toList())),
+        assignments: provider.unitAssignments,
         title: provider.billTitle,
         category: provider.category.id,
         currency: provider.currency.code,
@@ -302,8 +310,41 @@ class _SummaryScreenState extends State<SummaryScreen>
                             );
                           }),
 
-                          // ── Save button ─────────────────────────────
+                          // ── Go Home button ──────────────────────────
                           const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: LiquidGlass(
+                              borderRadius: BorderRadius.circular(16),
+                              interactive: true,
+                              onTap: () => Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                    builder: (_) => const HomeShell()),
+                                (route) => false,
+                              ),
+                              padding: EdgeInsets.zero,
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.home_rounded,
+                                      size: 18, color: AppTheme.textSecondary),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'На главную',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // ── Save button ─────────────────────────────
+                          const SizedBox(height: 8),
                           SizedBox(
                             width: double.infinity,
                             height: 52,
@@ -586,8 +627,8 @@ class _PersonCard extends StatelessWidget {
               ...items.map((item) {
                 final splitPrice =
                     provider.getItemSplitPrice(item.id, person.id);
-                final sharedWith = provider.getPeopleForItem(item.id);
-                final isShared = sharedWith.length > 1;
+                final unitCount =
+                    provider.getPersonUnitCount(item.id, person.id);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 5),
                   child: Row(
@@ -595,7 +636,7 @@ class _PersonCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           item.name +
-                              (isShared ? ' (÷${sharedWith.length})' : ''),
+                              (unitCount > 1 ? ' ×$unitCount' : ''),
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 13,

@@ -34,15 +34,17 @@ class BillProvider extends ChangeNotifier {
   final List<Person> _people = [];
   double _serviceChargePercent = 0.0;
   bool _serviceChargeEnabled = false;
-  final Map<String, Set<String>> _assignments = {};
+
+  // itemId -> personId -> unit count
+  final Map<String, Map<String, int>> _assignments = {};
+
   int _nextItemId = 0;
   int _nextPersonId = 0;
-  ExpenseCategory _category = ExpenseCategory.all.last; // default: Прочее
+  ExpenseCategory _category = ExpenseCategory.all.last;
   SplitMode _splitMode = SplitMode.byItems;
   Currency _currency = Currency.kgs;
   String _billTitle = '';
 
-  // Percentage/shares maps: personId -> value
   final Map<String, double> _percentages = {};
   final Map<String, int> _shares = {};
 
@@ -50,8 +52,26 @@ class BillProvider extends ChangeNotifier {
   List<Person> get people => List.unmodifiable(_people);
   double get serviceChargePercent => _serviceChargePercent;
   bool get serviceChargeEnabled => _serviceChargeEnabled;
+
+  // Backward-compat getter: itemId -> set of personIds with ≥1 unit
   Map<String, Set<String>> get assignments =>
-      _assignments.map((k, v) => MapEntry(k, Set.unmodifiable(v)));
+      _assignments.map((itemId, personMap) => MapEntry(
+            itemId,
+            personMap.entries
+                .where((e) => e.value > 0)
+                .map((e) => e.key)
+                .toSet(),
+          ));
+
+  /// Raw assignment matrix: itemId -> personId -> unit count.
+  /// Use this when persisting a bill so multi-unit assignments survive the
+  /// round-trip through the backend.
+  Map<String, Map<String, int>> get unitAssignments =>
+      _assignments.map((itemId, personMap) => MapEntry(
+            itemId,
+            Map<String, int>.from(personMap),
+          ));
+
   ExpenseCategory get category => _category;
   SplitMode get splitMode => _splitMode;
   Currency get currency => _currency;
@@ -59,7 +79,7 @@ class BillProvider extends ChangeNotifier {
   Map<String, double> get percentages => Map.unmodifiable(_percentages);
   Map<String, int> get shares => Map.unmodifiable(_shares);
 
-  double get subtotal => _items.fold(0.0, (sum, item) => sum + item.price);
+  double get subtotal => _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
   double get serviceChargeAmount =>
       _serviceChargeEnabled ? subtotal * _serviceChargePercent / 100 : 0;
@@ -68,11 +88,57 @@ class BillProvider extends ChangeNotifier {
 
   int get totalShares => _shares.values.fold(0, (sum, s) => sum + s);
 
+  // --- Unit-based assignment helpers ---
+
+  int getPersonUnitCount(String itemId, String personId) =>
+      _assignments[itemId]?[personId] ?? 0;
+
+  int getTotalAssignedUnits(String itemId) =>
+      _assignments[itemId]?.values.fold(0, (s, c) => (s ?? 0) + c) ?? 0;
+
+  int getRemainingUnits(String itemId) {
+    final idx = _items.indexWhere((i) => i.id == itemId);
+    if (idx < 0) return 0;
+    return _items[idx].quantity - getTotalAssignedUnits(itemId);
+  }
+
+  /// Assigns one share of an item to a person. Sharing is allowed: if the
+  /// total assigned shares exceed the item's quantity, the item's total
+  /// price is divided proportionally across all shares (see
+  /// [getPersonSubtotal]).
+  void assignOneUnit(String itemId, String personId) {
+    if (_items.indexWhere((i) => i.id == itemId) < 0) return;
+    _assignments.putIfAbsent(itemId, () => {});
+    _assignments[itemId]![personId] =
+        (_assignments[itemId]![personId] ?? 0) + 1;
+    notifyListeners();
+  }
+
+  void unassignOneUnit(String itemId, String personId) {
+    final current = _assignments[itemId]?[personId] ?? 0;
+    if (current <= 0) return;
+    if (current == 1) {
+      _assignments[itemId]!.remove(personId);
+    } else {
+      _assignments[itemId]![personId] = current - 1;
+    }
+    if (_assignments[itemId]?.isEmpty ?? false) {
+      _assignments.remove(itemId);
+    }
+    notifyListeners();
+  }
+
+  void setItemQuantity(String itemId, int quantity) {
+    final idx = _items.indexWhere((i) => i.id == itemId);
+    if (idx < 0 || quantity < 1) return;
+    _items[idx].quantity = quantity;
+    notifyListeners();
+  }
+
   // --- Category ---
 
   void setCategory(ExpenseCategory cat) {
     _category = cat;
-    // Apply default service charge for category
     if (cat.defaultServicePercent > 0) {
       _serviceChargeEnabled = true;
       _serviceChargePercent = cat.defaultServicePercent;
@@ -106,11 +172,12 @@ class BillProvider extends ChangeNotifier {
 
   // --- Items ---
 
-  void addItem(String name, double price) {
+  void addItem(String name, double price, {int quantity = 1}) {
     _items.add(BillItem(
       id: 'item_${_nextItemId++}',
       name: name,
       price: price,
+      quantity: quantity,
     ));
     notifyListeners();
   }
@@ -148,50 +215,35 @@ class BillProvider extends ChangeNotifier {
 
   void removePerson(String personId) {
     _people.removeWhere((p) => p.id == personId);
-    for (final set in _assignments.values) {
-      set.remove(personId);
+    for (final personMap in _assignments.values) {
+      personMap.remove(personId);
     }
     _percentages.remove(personId);
     _shares.remove(personId);
     notifyListeners();
   }
 
-  // --- Assignments ---
+  // --- Assignment queries ---
 
-  void assignItemToPerson(String itemId, String personId) {
-    _assignments.putIfAbsent(itemId, () => {});
-    _assignments[itemId]!.add(personId);
-    notifyListeners();
-  }
+  bool isItemAssignedToPerson(String itemId, String personId) =>
+      getPersonUnitCount(itemId, personId) > 0;
 
-  void unassignItemFromPerson(String itemId, String personId) {
-    _assignments[itemId]?.remove(personId);
-    if (_assignments[itemId]?.isEmpty ?? false) {
-      _assignments.remove(itemId);
-    }
-    notifyListeners();
-  }
+  Set<String> getPeopleForItem(String itemId) =>
+      _assignments[itemId]
+          ?.entries
+          .where((e) => e.value > 0)
+          .map((e) => e.key)
+          .toSet() ??
+      {};
 
-  bool isItemAssignedToPerson(String itemId, String personId) {
-    return _assignments[itemId]?.contains(personId) ?? false;
-  }
+  List<BillItem> getPersonItems(String personId) => _items
+      .where((item) => getPersonUnitCount(item.id, personId) > 0)
+      .toList();
 
-  Set<String> getPeopleForItem(String itemId) {
-    return _assignments[itemId] ?? {};
-  }
-
-  List<BillItem> getPersonItems(String personId) {
-    return _items.where((item) {
-      return _assignments[item.id]?.contains(personId) ?? false;
-    }).toList();
-  }
-
-  List<BillItem> get unassignedItems {
-    return _items.where((item) {
-      final assigned = _assignments[item.id];
-      return assigned == null || assigned.isEmpty;
-    }).toList();
-  }
+  /// Items with no people assigned yet. Used to flag the bill as incomplete
+  /// in `byItems` mode.
+  List<BillItem> get unassignedItems =>
+      _items.where((item) => getTotalAssignedUnits(item.id) == 0).toList();
 
   // --- Percentages ---
 
@@ -239,14 +291,27 @@ class BillProvider extends ChangeNotifier {
 
       case SplitMode.byItems:
         double sum = 0;
-        for (final entry in _assignments.entries) {
-          if (entry.value.contains(personId)) {
-            final item = _items.firstWhere((i) => i.id == entry.key);
-            sum += item.price / entry.value.length;
-          }
+        for (final item in _items) {
+          sum += _personItemCost(item, personId);
         }
         return sum;
     }
+  }
+
+  /// A person's share of a single item. Two regimes:
+  /// - **Per-unit** (totalShares ≤ quantity): person pays `price * theirShares`,
+  ///   leaving any unallocated units uncharged.
+  /// - **Proportional** (totalShares > quantity): the item is shared, so its
+  ///   full cost (`price * quantity`) splits across every share.
+  double _personItemCost(BillItem item, String personId) {
+    final personShares = getPersonUnitCount(item.id, personId);
+    if (personShares == 0) return 0;
+    final totalShares = getTotalAssignedUnits(item.id);
+    if (totalShares == 0) return 0;
+    if (totalShares <= item.quantity) {
+      return item.price * personShares;
+    }
+    return item.totalPrice * personShares / totalShares;
   }
 
   double getPersonTotal(String personId) {
@@ -258,10 +323,9 @@ class BillProvider extends ChangeNotifier {
   }
 
   double getItemSplitPrice(String itemId, String personId) {
-    final people = _assignments[itemId];
-    if (people == null || !people.contains(personId)) return 0;
-    final item = _items.firstWhere((i) => i.id == itemId);
-    return item.price / people.length;
+    final idx = _items.indexWhere((i) => i.id == itemId);
+    if (idx < 0) return 0;
+    return _personItemCost(_items[idx], personId);
   }
 
   // --- Reset ---
@@ -282,7 +346,6 @@ class BillProvider extends ChangeNotifier {
       _category = ExpenseCategory.all.last;
       _currency = Currency.kgs;
     } else {
-      // Re-apply category default service charge
       if (_category.defaultServicePercent > 0) {
         _serviceChargeEnabled = true;
         _serviceChargePercent = _category.defaultServicePercent;

@@ -461,13 +461,8 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                                 title: Text(name,
                                     style: const TextStyle(
                                         color: AppTheme.textPrimary,
-                                        fontSize: 14)),
-                                subtitle: Text(
-                                  user['email'] as String? ?? '',
-                                  style: const TextStyle(
-                                      color: AppTheme.textSecondary,
-                                      fontSize: 12),
-                                ),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500)),
                                 trailing: const Icon(Icons.person_add_outlined,
                                     color: AppTheme.primary, size: 20),
                                 onTap: () => _addFromSearch(user),
