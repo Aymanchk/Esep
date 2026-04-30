@@ -135,6 +135,14 @@ class BillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setItemWeight(String itemId, double weightKg, double pricePerKg) {
+    final idx = _items.indexWhere((i) => i.id == itemId);
+    if (idx < 0 || weightKg <= 0) return;
+    _items[idx].weightKg = weightKg;
+    _items[idx].price = (pricePerKg * weightKg * 100).round() / 100;
+    notifyListeners();
+  }
+
   // --- Category ---
 
   void setCategory(ExpenseCategory cat) {
@@ -172,12 +180,15 @@ class BillProvider extends ChangeNotifier {
 
   // --- Items ---
 
-  void addItem(String name, double price, {int quantity = 1}) {
+  void addItem(String name, double price,
+      {int quantity = 1, bool isWeightBased = false, double weightKg = 0}) {
     _items.add(BillItem(
       id: 'item_${_nextItemId++}',
       name: name,
       price: price,
       quantity: quantity,
+      isWeightBased: isWeightBased,
+      weightKg: weightKg,
     ));
     notifyListeners();
   }

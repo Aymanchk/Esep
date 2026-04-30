@@ -37,49 +37,100 @@ class _SplitScreenState extends State<SplitScreen>
   void _showAddItemDialog() {
     final nameCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
+    final weightCtrl = TextEditingController();
+    bool isKg = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Добавить позицию'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(hintText: 'Название'),
-              textCapitalization: TextCapitalization.sentences,
-              autofocus: true,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: priceCtrl,
-              decoration: const InputDecoration(hintText: 'Цена за 1 шт.'),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Добавить позицию'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(hintText: 'Название'),
+                textCapitalization: TextCapitalization.sentences,
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Text('Единица:', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('шт.'),
+                    selected: !isKg,
+                    onSelected: (_) => setState(() => isKg = false),
+                  ),
+                  const SizedBox(width: 6),
+                  ChoiceChip(
+                    label: const Text('кг'),
+                    selected: isKg,
+                    onSelected: (_) => setState(() => isKg = true),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: priceCtrl,
+                decoration: InputDecoration(
+                  hintText: isKg ? 'Цена за 1 кг' : 'Цена за 1 шт.',
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+                ],
+              ),
+              if (isKg) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: weightCtrl,
+                  decoration: const InputDecoration(hintText: 'Вес (кг), напр. 0.5'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+                  ],
+                ),
               ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = nameCtrl.text.trim();
+                final pricePerUnit =
+                    double.tryParse(priceCtrl.text.replaceAll(',', '.'));
+                if (name.isEmpty || pricePerUnit == null || pricePerUnit <= 0) {
+                  return;
+                }
+                if (isKg) {
+                  final weight =
+                      double.tryParse(weightCtrl.text.replaceAll(',', '.'));
+                  if (weight == null || weight <= 0) return;
+                  final totalPrice = (pricePerUnit * weight * 100).round() / 100;
+                  context.read<BillProvider>().addItem(
+                        name,
+                        totalPrice,
+                        isWeightBased: true,
+                        weightKg: weight,
+                      );
+                } else {
+                  context.read<BillProvider>().addItem(name, pricePerUnit);
+                }
+                Navigator.pop(ctx);
+              },
+              child: const Text('Добавить'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              final price =
-                  double.tryParse(priceCtrl.text.replaceAll(',', '.'));
-              if (name.isNotEmpty && price != null && price > 0) {
-                context.read<BillProvider>().addItem(name, price);
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Добавить'),
-          ),
-        ],
       ),
     );
   }
@@ -818,7 +869,9 @@ class _ItemTile extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${item.price.toStringAsFixed(0)} × ${item.quantity} = ${item.totalPrice.toStringAsFixed(0)} ${provider.currency.symbol}',
+                  item.isWeightBased
+                      ? '${(item.price / item.weightKg).toStringAsFixed(0)} сом/кг × ${item.weightKg} кг = ${item.totalPrice.toStringAsFixed(0)} ${provider.currency.symbol}'
+                      : '${item.price.toStringAsFixed(0)} × ${item.quantity} = ${item.totalPrice.toStringAsFixed(0)} ${provider.currency.symbol}',
                   style: const TextStyle(
                       color: AppTheme.textSecondary, fontSize: 11),
                 ),
@@ -871,7 +924,28 @@ class _ItemTile extends StatelessWidget {
               ),
             ),
 
-          // Quantity controls
+          // Quantity / weight controls
+          if (item.isWeightBased)
+            GestureDetector(
+              onTap: () => _showEditWeightDialog(context, item, provider),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+                child: Text(
+                  '${item.weightKg} кг',
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            )
+          else
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -937,6 +1011,65 @@ class _ItemTile extends StatelessWidget {
               color: AppTheme.textSecondary.withValues(alpha: 0.5),
               size: 18,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditWeightDialog(
+      BuildContext context, BillItem item, BillProvider provider) {
+    final pricePerKg = item.weightKg > 0 ? item.price / item.weightKg : 0.0;
+    final weightCtrl =
+        TextEditingController(text: item.weightKg.toString());
+    final priceCtrl =
+        TextEditingController(text: pricePerKg.toStringAsFixed(0));
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Изменить вес'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: priceCtrl,
+              decoration: const InputDecoration(hintText: 'Цена за 1 кг'),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: weightCtrl,
+              decoration: const InputDecoration(hintText: 'Вес (кг)'),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final w =
+                  double.tryParse(weightCtrl.text.replaceAll(',', '.'));
+              final p =
+                  double.tryParse(priceCtrl.text.replaceAll(',', '.'));
+              if (w != null && w > 0 && p != null && p > 0) {
+                provider.setItemWeight(item.id, w, p);
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Сохранить'),
           ),
         ],
       ),
@@ -1025,7 +1158,79 @@ class _PeopleDropRow extends StatelessWidget {
               );
             },
           );
-        }).toList(),
+        }).cast<Widget>().toList()
+          ..add(_AddPersonButton(provider: provider)),
+      ),
+    );
+  }
+}
+
+class _AddPersonButton extends StatelessWidget {
+  final BillProvider provider;
+  const _AddPersonButton({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showAddPersonDialog(context),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.surface,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 2,
+              ),
+            ),
+            child: const Icon(
+              Icons.person_add_rounded,
+              color: AppTheme.textSecondary,
+              size: 22,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Добавить',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+        ],
+      ),
+    );
+  }
+
+  void _showAddPersonDialog(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Добавить участника'),
+        content: TextField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(hintText: 'Имя'),
+          textCapitalization: TextCapitalization.words,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              if (name.isNotEmpty) {
+                provider.addPerson(name);
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Добавить'),
+          ),
+        ],
       ),
     );
   }
