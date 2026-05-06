@@ -2,7 +2,7 @@
 
 # Fair Splitter
 
-**Делите счёт честно — Split bills fairly**
+**Делите  честно — Split bills fairly**
 
 A modern bill-splitting app with OCR receipt scanning, real-time calculations, and social sharing.
 
