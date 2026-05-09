@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/bill_item.dart';
 import '../models/person.dart';
 import '../models/expense_category.dart';
@@ -10,26 +13,39 @@ enum Currency { kgs, usd, eur, rub, kzt }
 extension CurrencyExt on Currency {
   String get symbol {
     switch (this) {
-      case Currency.kgs: return 'сом';
-      case Currency.usd: return '\$';
-      case Currency.eur: return '€';
-      case Currency.rub: return '₽';
-      case Currency.kzt: return '₸';
+      case Currency.kgs:
+        return 'сом';
+      case Currency.usd:
+        return '\$';
+      case Currency.eur:
+        return '€';
+      case Currency.rub:
+        return '₽';
+      case Currency.kzt:
+        return '₸';
     }
   }
 
   String get code {
     switch (this) {
-      case Currency.kgs: return 'KGS';
-      case Currency.usd: return 'USD';
-      case Currency.eur: return 'EUR';
-      case Currency.rub: return 'RUB';
-      case Currency.kzt: return 'KZT';
+      case Currency.kgs:
+        return 'KGS';
+      case Currency.usd:
+        return 'USD';
+      case Currency.eur:
+        return 'EUR';
+      case Currency.rub:
+        return 'RUB';
+      case Currency.kzt:
+        return 'KZT';
     }
   }
 }
 
 class BillProvider extends ChangeNotifier {
+  static const _draftKey = 'fs_bill_draft_v1';
+  static const _draftVersion = 1;
+
   final List<BillItem> _items = [];
   final List<Person> _people = [];
   double _serviceChargePercent = 0.0;
@@ -47,6 +63,9 @@ class BillProvider extends ChangeNotifier {
 
   final Map<String, double> _percentages = {};
   final Map<String, int> _shares = {};
+  Timer? _draftSaveDebounce;
+  bool _suspendAutosave = false;
+  bool _restoredFromDraft = false;
 
   List<BillItem> get items => List.unmodifiable(_items);
   List<Person> get people => List.unmodifiable(_people);
@@ -54,23 +73,19 @@ class BillProvider extends ChangeNotifier {
   bool get serviceChargeEnabled => _serviceChargeEnabled;
 
   // Backward-compat getter: itemId -> set of personIds with ≥1 unit
-  Map<String, Set<String>> get assignments =>
-      _assignments.map((itemId, personMap) => MapEntry(
-            itemId,
-            personMap.entries
-                .where((e) => e.value > 0)
-                .map((e) => e.key)
-                .toSet(),
-          ));
+  Map<String, Set<String>> get assignments => _assignments.map(
+    (itemId, personMap) => MapEntry(
+      itemId,
+      personMap.entries.where((e) => e.value > 0).map((e) => e.key).toSet(),
+    ),
+  );
 
   /// Raw assignment matrix: itemId -> personId -> unit count.
   /// Use this when persisting a bill so multi-unit assignments survive the
   /// round-trip through the backend.
-  Map<String, Map<String, int>> get unitAssignments =>
-      _assignments.map((itemId, personMap) => MapEntry(
-            itemId,
-            Map<String, int>.from(personMap),
-          ));
+  Map<String, Map<String, int>> get unitAssignments => _assignments.map(
+    (itemId, personMap) => MapEntry(itemId, Map<String, int>.from(personMap)),
+  );
 
   ExpenseCategory get category => _category;
   SplitMode get splitMode => _splitMode;
@@ -78,6 +93,33 @@ class BillProvider extends ChangeNotifier {
   String get billTitle => _billTitle;
   Map<String, double> get percentages => Map.unmodifiable(_percentages);
   Map<String, int> get shares => Map.unmodifiable(_shares);
+  bool get restoredFromDraft => _restoredFromDraft;
+  bool get hasDraftContent =>
+      _people.isNotEmpty ||
+      _items.isNotEmpty ||
+      _billTitle.trim().isNotEmpty ||
+      _assignments.isNotEmpty ||
+      _percentages.isNotEmpty ||
+      _shares.isNotEmpty ||
+      _serviceChargeEnabled ||
+      _serviceChargePercent > 0 ||
+      _category.id != ExpenseCategory.all.last.id ||
+      _currency != Currency.kgs ||
+      _splitMode != SplitMode.byItems;
+
+  @override
+  void notifyListeners() {
+    super.notifyListeners();
+    if (!_suspendAutosave) {
+      _scheduleDraftSave();
+    }
+  }
+
+  @override
+  void dispose() {
+    _draftSaveDebounce?.cancel();
+    super.dispose();
+  }
 
   double get subtotal => _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
@@ -180,16 +222,23 @@ class BillProvider extends ChangeNotifier {
 
   // --- Items ---
 
-  void addItem(String name, double price,
-      {int quantity = 1, bool isWeightBased = false, double weightKg = 0}) {
-    _items.add(BillItem(
-      id: 'item_${_nextItemId++}',
-      name: name,
-      price: price,
-      quantity: quantity,
-      isWeightBased: isWeightBased,
-      weightKg: weightKg,
-    ));
+  void addItem(
+    String name,
+    double price, {
+    int quantity = 1,
+    bool isWeightBased = false,
+    double weightKg = 0,
+  }) {
+    _items.add(
+      BillItem(
+        id: 'item_${_nextItemId++}',
+        name: name,
+        price: price,
+        quantity: quantity,
+        isWeightBased: isWeightBased,
+        weightKg: weightKg,
+      ),
+    );
     notifyListeners();
   }
 
@@ -201,11 +250,13 @@ class BillProvider extends ChangeNotifier {
 
   void addItemsFromOcr(List<Map<String, dynamic>> ocrItems) {
     for (final item in ocrItems) {
-      _items.add(BillItem(
-        id: 'item_${_nextItemId++}',
-        name: item['name'] as String,
-        price: (item['price'] as num).toDouble(),
-      ));
+      _items.add(
+        BillItem(
+          id: 'item_${_nextItemId++}',
+          name: item['name'] as String,
+          price: (item['price'] as num).toDouble(),
+        ),
+      );
     }
     notifyListeners();
   }
@@ -214,13 +265,15 @@ class BillProvider extends ChangeNotifier {
 
   void addPerson(String name, {int? userId, String? avatarUrl}) {
     final colorIndex = _nextPersonId % Person.avatarColors.length;
-    _people.add(Person(
-      id: 'person_${_nextPersonId++}',
-      name: name,
-      avatarColor: Person.avatarColors[colorIndex],
-      userId: userId,
-      avatarUrl: avatarUrl,
-    ));
+    _people.add(
+      Person(
+        id: 'person_${_nextPersonId++}',
+        name: name,
+        avatarColor: Person.avatarColors[colorIndex],
+        userId: userId,
+        avatarUrl: avatarUrl,
+      ),
+    );
     notifyListeners();
   }
 
@@ -240,8 +293,7 @@ class BillProvider extends ChangeNotifier {
       getPersonUnitCount(itemId, personId) > 0;
 
   Set<String> getPeopleForItem(String itemId) =>
-      _assignments[itemId]
-          ?.entries
+      _assignments[itemId]?.entries
           .where((e) => e.value > 0)
           .map((e) => e.key)
           .toSet() ??
@@ -339,9 +391,207 @@ class BillProvider extends ChangeNotifier {
     return _personItemCost(_items[idx], personId);
   }
 
+  void markRestoredDraftContinued() {
+    _restoredFromDraft = false;
+  }
+
+  Future<bool> hasSavedDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(_draftKey);
+  }
+
+  Future<void> restoreDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_draftKey);
+    if (raw == null) return;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['version'] != _draftVersion) {
+        await clearDraft();
+        return;
+      }
+
+      _suspendAutosave = true;
+      _items
+        ..clear()
+        ..addAll(
+          (decoded['items'] as List? ?? []).map((rawItem) {
+            final item = Map<String, dynamic>.from(rawItem as Map);
+            return BillItem(
+              id: item['id'] as String,
+              name: item['name'] as String? ?? '',
+              price: (item['price'] as num? ?? 0).toDouble(),
+              quantity: item['quantity'] as int? ?? 1,
+              isWeightBased: item['is_weight_based'] as bool? ?? false,
+              weightKg: (item['weight_kg'] as num? ?? 0).toDouble(),
+            );
+          }),
+        );
+      _people
+        ..clear()
+        ..addAll(
+          (decoded['people'] as List? ?? []).map((rawPerson) {
+            final person = Map<String, dynamic>.from(rawPerson as Map);
+            final colorIndex =
+                _people.length % Person.avatarColors.length;
+            return Person(
+              id: person['id'] as String,
+              name: person['name'] as String? ?? '',
+              avatarColor: Person.avatarColors[colorIndex],
+              userId: person['user_id'] as int?,
+              avatarUrl: person['avatar_url'] as String?,
+            );
+          }),
+        );
+
+      _assignments
+        ..clear()
+        ..addAll(
+          (decoded['assignments'] as Map? ?? {}).map(
+            (itemId, personMap) => MapEntry(
+              itemId.toString(),
+              Map<String, int>.from(personMap as Map),
+            ),
+          ),
+        );
+      _percentages
+        ..clear()
+        ..addAll(
+          (decoded['percentages'] as Map? ?? {}).map(
+            (personId, pct) => MapEntry(
+              personId.toString(),
+              (pct as num).toDouble(),
+            ),
+          ),
+        );
+      _shares
+        ..clear()
+        ..addAll(
+          (decoded['shares'] as Map? ?? {}).map(
+            (personId, count) => MapEntry(personId.toString(), count as int),
+          ),
+        );
+
+      _nextItemId = decoded['next_item_id'] as int? ?? _items.length;
+      _nextPersonId = decoded['next_person_id'] as int? ?? _people.length;
+      _serviceChargePercent =
+          (decoded['service_charge_percent'] as num? ?? 0).toDouble();
+      _serviceChargeEnabled =
+          decoded['service_charge_enabled'] as bool? ?? false;
+      _category = ExpenseCategory.findById(
+        decoded['category_id'] as String? ?? ExpenseCategory.all.last.id,
+      );
+      _splitMode = SplitMode.values.firstWhere(
+        (mode) => mode.name == decoded['split_mode'],
+        orElse: () => SplitMode.byItems,
+      );
+      _currency = Currency.values.firstWhere(
+        (currency) => currency.name == decoded['currency'],
+        orElse: () => Currency.kgs,
+      );
+      _billTitle = decoded['bill_title'] as String? ?? '';
+      _restoredFromDraft = true;
+      _suspendAutosave = false;
+      notifyListeners();
+    } catch (_) {
+      _suspendAutosave = false;
+      await clearDraft();
+    }
+  }
+
+  Future<void> clearDraft() async {
+    _draftSaveDebounce?.cancel();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_draftKey);
+  }
+
+  Future<void> discardDraft() async {
+    _suspendAutosave = true;
+    _clearAllState();
+    _restoredFromDraft = false;
+    _suspendAutosave = false;
+    await clearDraft();
+    notifyListeners();
+  }
+
+  void _scheduleDraftSave() {
+    _draftSaveDebounce?.cancel();
+    _draftSaveDebounce = Timer(
+      const Duration(seconds: 3),
+      () => _saveDraftNow(),
+    );
+  }
+
+  Future<void> _saveDraftNow() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!hasDraftContent) {
+      await prefs.remove(_draftKey);
+      return;
+    }
+
+    await prefs.setString(_draftKey, jsonEncode(_toDraftJson()));
+  }
+
+  Map<String, dynamic> _toDraftJson() => {
+        'version': _draftVersion,
+        'updated_at': DateTime.now().toIso8601String(),
+        'bill_title': _billTitle,
+        'category_id': _category.id,
+        'split_mode': _splitMode.name,
+        'currency': _currency.name,
+        'service_charge_percent': _serviceChargePercent,
+        'service_charge_enabled': _serviceChargeEnabled,
+        'next_item_id': _nextItemId,
+        'next_person_id': _nextPersonId,
+        'items': _items
+            .map(
+              (item) => {
+                'id': item.id,
+                'name': item.name,
+                'price': item.price,
+                'quantity': item.quantity,
+                'is_weight_based': item.isWeightBased,
+                'weight_kg': item.weightKg,
+              },
+            )
+            .toList(),
+        'people': _people
+            .map(
+              (person) => {
+                'id': person.id,
+                'name': person.name,
+                'user_id': person.userId,
+                'avatar_url': person.avatarUrl,
+              },
+            )
+            .toList(),
+        'assignments': _assignments,
+        'percentages': _percentages,
+        'shares': _shares,
+      };
+
   // --- Reset ---
 
+  void _clearAllState() {
+    _items.clear();
+    _people.clear();
+    _assignments.clear();
+    _percentages.clear();
+    _shares.clear();
+    _nextItemId = 0;
+    _nextPersonId = 0;
+    _billTitle = '';
+    _serviceChargePercent = 0.0;
+    _serviceChargeEnabled = false;
+    _category = ExpenseCategory.all.last;
+    _splitMode = SplitMode.byItems;
+    _currency = Currency.kgs;
+  }
+
   void reset({bool keepPeople = false}) {
+    _restoredFromDraft = false;
     _items.clear();
     _assignments.clear();
     _nextItemId = 0;

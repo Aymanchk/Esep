@@ -35,6 +35,7 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowDraftPrompt());
   }
 
   @override
@@ -85,19 +86,90 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
 
   void _addFromSearch(Map<String, dynamic> user) {
     final provider = context.read<BillProvider>();
-    if (provider.people.any((p) => p.userId == user['id'])) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Участник уже добавлен')),
-      );
+    final userId = user['id'] as int?;
+    final name = user['name'] as String? ?? '';
+    if (_hasParticipant(provider, userId: userId, name: name)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Участник уже добавлен')));
       return;
     }
     provider.addPerson(
-      user['name'] as String,
-      userId: user['id'] as int,
+      name,
+      userId: userId,
       avatarUrl: user['avatar'] as String?,
     );
     _nameController.clear();
     setState(() => _searchResults = []);
+  }
+
+  Future<void> _maybeShowDraftPrompt() async {
+    final provider = context.read<BillProvider>();
+    if (provider.hasDraftContent || !(await provider.hasSavedDraft())) return;
+    if (!mounted) return;
+
+    final continueDraft = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Continue draft?'),
+        content: const Text('You have an unfinished bill draft.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Discard draft'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Continue draft'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (continueDraft == true) {
+      await provider.restoreDraft();
+      _billNameController.text = provider.billTitle;
+    } else if (continueDraft == false) {
+      await provider.discardDraft();
+      _billNameController.clear();
+    }
+  }
+
+  bool _hasParticipant(
+    BillProvider provider, {
+    required int? userId,
+    required String name,
+  }) {
+    final normalizedName = name.trim().toLowerCase();
+    return provider.people.any((person) {
+      if (userId != null && person.userId == userId) return true;
+      return normalizedName.isNotEmpty &&
+          person.name.trim().toLowerCase() == normalizedName;
+    });
+  }
+
+  int _addGroupMembers(List<Map<String, dynamic>> members) {
+    final billProvider = context.read<BillProvider>();
+    var addedCount = 0;
+
+    for (final member in members) {
+      final userId = member['id'] as int?;
+      final name = member['name'] as String? ?? '';
+      if (name.trim().isEmpty ||
+          _hasParticipant(billProvider, userId: userId, name: name)) {
+        continue;
+      }
+
+      billProvider.addPerson(
+        name,
+        userId: userId,
+        avatarUrl: member['avatar'] as String?,
+      );
+      addedCount++;
+    }
+
+    return addedCount;
   }
 
   void _showGroupPickerDialog() {
@@ -113,8 +185,9 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
             if (gp.isLoading) {
               return const SizedBox(
                 height: 200,
-                child:
-                    Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppTheme.primary),
+                ),
               );
             }
             if (gp.groups.isEmpty) {
@@ -123,19 +196,28 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.group_rounded, size: 40, color: AppTheme.primary),
+                    const Icon(
+                      Icons.group_rounded,
+                      size: 40,
+                      color: AppTheme.primary,
+                    ),
                     const SizedBox(height: 12),
-                    const Text('Нет групп',
-                        style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Нет групп',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     const Text(
                       'Создайте группу в разделе Профиль',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 13),
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -168,27 +250,24 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                   ),
                   const SizedBox(height: 12),
                   ...gp.groups.map((group) {
-                    final members =
-                        List<Map<String, dynamic>>.from(group['members'] ?? []);
+                    final members = List<Map<String, dynamic>>.from(
+                      group['members'] ?? [],
+                    );
                     final name = group['name']?.toString() ?? '';
                     return _GroupListTile(
                       name: name,
                       memberCount: members.length,
                       onTap: () {
-                        final billProvider = context.read<BillProvider>();
-                        for (final member in members) {
-                          if (!billProvider.people
-                              .any((p) => p.userId == member['id'])) {
-                            billProvider.addPerson(
-                              member['name'] as String? ?? '',
-                              userId: member['id'] as int?,
-                              avatarUrl: member['avatar'] as String?,
-                            );
-                          }
-                        }
+                        final addedCount = _addGroupMembers(members);
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Добавлено из "$name"')),
+                          SnackBar(
+                            content: Text(
+                              addedCount == 0
+                                  ? 'No new participants from "$name"'
+                                  : 'Added $addedCount from "$name"',
+                            ),
+                          ),
                         );
                       },
                     );
@@ -210,9 +289,7 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: Stack(
           children: [
             // Ambient blobs — warm tones
@@ -245,8 +322,11 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                           child: LiquidGlass(
                             borderRadius: BorderRadius.circular(12),
                             padding: const EdgeInsets.all(10),
-                            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                                size: 18, color: AppTheme.textPrimary),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -258,28 +338,33 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                         ),
                         if (!auth.isGuest)
                           LiquidGlass(
-                              borderRadius: BorderRadius.circular(12),
-                              interactive: true,
-                              onTap: _showGroupPickerDialog,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.group_rounded,
-                                      size: 16, color: AppTheme.primary),
-                                  const SizedBox(width: 6),
-                                  const Text(
-                                    'Из группы',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            borderRadius: BorderRadius.circular(12),
+                            interactive: true,
+                            onTap: _showGroupPickerDialog,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
                             ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.group_rounded,
+                                  size: 16,
+                                  color: AppTheme.primary,
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Group',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -303,7 +388,9 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                               duration: const Duration(milliseconds: 200),
                               margin: const EdgeInsets.only(right: 8),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 8),
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: isActive
                                     ? cat.color.withValues(alpha: 0.2)
@@ -319,11 +406,13 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(cat.icon,
-                                      size: 16,
-                                      color: isActive
-                                          ? cat.color
-                                          : AppTheme.textSecondary),
+                                  Icon(
+                                    cat.icon,
+                                    size: 16,
+                                    color: isActive
+                                        ? cat.color
+                                        : AppTheme.textSecondary,
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
                                     cat.name,
@@ -358,7 +447,9 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                         hintText: 'Название счёта (необязательно)',
                         prefixIcon: Icon(Icons.edit_note_rounded),
                         contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                       onChanged: (v) =>
                           context.read<BillProvider>().setBillTitle(v.trim()),
@@ -373,7 +464,9 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                           ? 'Добавьте минимум 2 участников'
                           : 'Введите имя или найдите пользователя',
                       style: const TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 13),
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
 
@@ -392,8 +485,9 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                               hintText: auth.isGuest
                                   ? 'Имя участника'
                                   : 'Имя или email',
-                              prefixIcon:
-                                  const Icon(Icons.person_search_rounded),
+                              prefixIcon: const Icon(
+                                Icons.person_search_rounded,
+                              ),
                               suffixIcon: _isSearching
                                   ? const Padding(
                                       padding: EdgeInsets.all(14),
@@ -424,15 +518,19 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.primary
-                                      .withValues(alpha: 0.4),
+                                  color: AppTheme.primary.withValues(
+                                    alpha: 0.4,
+                                  ),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
-                            child: const Icon(Icons.add_rounded,
-                                color: Color(0xFF1A1A1A), size: 26),
+                            child: const Icon(
+                              Icons.add_rounded,
+                              color: Color(0xFF1A1A1A),
+                              size: 26,
+                            ),
                           ),
                         ),
                       ],
@@ -457,14 +555,23 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                               final name = user['name'] as String;
                               return ListTile(
                                 leading: _Avatar(
-                                    name: name, avatarUrl: avatarUrl, radius: 18),
-                                title: Text(name,
-                                    style: const TextStyle(
-                                        color: AppTheme.textPrimary,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500)),
-                                trailing: const Icon(Icons.person_add_outlined,
-                                    color: AppTheme.primary, size: 20),
+                                  name: name,
+                                  avatarUrl: avatarUrl,
+                                  radius: 18,
+                                ),
+                                title: Text(
+                                  name,
+                                  style: const TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                trailing: const Icon(
+                                  Icons.person_add_outlined,
+                                  color: AppTheme.primary,
+                                  size: 20,
+                                ),
                                 onTap: () => _addFromSearch(user),
                               );
                             },
@@ -480,15 +587,13 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                     child: provider.people.isEmpty
                         ? _EmptyParticipants()
                         : ListView.builder(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             itemCount: provider.people.length,
                             itemBuilder: (_, i) {
                               final person = provider.people[i];
                               return TweenAnimationBuilder<double>(
                                 tween: Tween(begin: 0, end: 1),
-                                duration:
-                                    const Duration(milliseconds: 300),
+                                duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeOutBack,
                                 builder: (_, v, child) => Transform.scale(
                                   scale: v,
@@ -500,13 +605,15 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                                     color: AppTheme.surface,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.06),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.06,
+                                      ),
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppTheme.primary
-                                            .withValues(alpha: 0.06),
+                                        color: AppTheme.primary.withValues(
+                                          alpha: 0.06,
+                                        ),
                                         blurRadius: 12,
                                       ),
                                     ],
@@ -529,17 +636,21 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                                         ),
                                         if (person.userId != null) ...[
                                           const SizedBox(width: 6),
-                                          const Icon(Icons.verified_rounded,
-                                              color: AppTheme.primary,
-                                              size: 15),
+                                          const Icon(
+                                            Icons.verified_rounded,
+                                            color: AppTheme.primary,
+                                            size: 15,
+                                          ),
                                         ],
                                       ],
                                     ),
                                     trailing: IconButton(
-                                      icon: Icon(Icons.close_rounded,
-                                          color: AppTheme.textSecondary
-                                              .withValues(alpha: 0.6),
-                                          size: 20),
+                                      icon: Icon(
+                                        Icons.close_rounded,
+                                        color: AppTheme.textSecondary
+                                            .withValues(alpha: 0.6),
+                                        size: 20,
+                                      ),
                                       onPressed: () =>
                                           provider.removePerson(person.id),
                                     ),
@@ -552,8 +663,7 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
 
                   // ── Bottom buttons ─────────────────────────────────
                   Padding(
-                    padding:
-                        const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                     child: SafeArea(
                       top: false,
                       child: Column(
@@ -569,8 +679,9 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: AppTheme.primary
-                                              .withValues(alpha: 0.4),
+                                          color: AppTheme.primary.withValues(
+                                            alpha: 0.4,
+                                          ),
                                           blurRadius: 16,
                                           offset: const Offset(0, 6),
                                         ),
@@ -578,7 +689,7 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                                     ),
                                     child: FilledButton(
                                       onPressed: () {
-                                        provider.reset(keepPeople: true);
+                                        _prepareForSplit(provider);
                                         Navigator.of(context).push(
                                           MaterialPageRoute(
                                             builder: (_) => const SplitScreen(),
@@ -589,27 +700,35 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                                         backgroundColor: Colors.transparent,
                                         shadowColor: Colors.transparent,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
                                         ),
                                       ),
                                       child: const Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.list_alt_rounded,
-                                              size: 18,
-                                              color: Color(0xFF1A1A1A)),
+                                          Icon(
+                                            Icons.list_alt_rounded,
+                                            size: 18,
+                                            color: Color(0xFF1A1A1A),
+                                          ),
                                           SizedBox(width: 8),
-                                          Text('По позициям',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF1A1A1A),
-                                              )),
+                                          Text(
+                                            'По позициям',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF1A1A1A),
+                                            ),
+                                          ),
                                           SizedBox(width: 8),
-                                          Icon(Icons.arrow_forward_rounded,
-                                              size: 20,
-                                              color: Color(0xFF1A1A1A)),
+                                          Icon(
+                                            Icons.arrow_forward_rounded,
+                                            size: 20,
+                                            color: Color(0xFF1A1A1A),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -617,8 +736,8 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                                 : FilledButton(
                                     onPressed: null,
                                     style: FilledButton.styleFrom(
-                                      disabledBackgroundColor:
-                                          AppTheme.primary.withValues(alpha: 0.2),
+                                      disabledBackgroundColor: AppTheme.primary
+                                          .withValues(alpha: 0.2),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
@@ -627,16 +746,20 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.list_alt_rounded,
-                                            size: 18,
-                                            color: AppTheme.textSecondary),
+                                        Icon(
+                                          Icons.list_alt_rounded,
+                                          size: 18,
+                                          color: AppTheme.textSecondary,
+                                        ),
                                         SizedBox(width: 8),
-                                        Text('По позициям',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppTheme.textSecondary,
-                                            )),
+                                        Text(
+                                          'По позициям',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -651,7 +774,7 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                               interactive: true,
                               onTap: _canProceed(provider)
                                   ? () {
-                                      provider.reset(keepPeople: true);
+                                      _prepareForSplit(provider);
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
                                           builder: (_) =>
@@ -664,11 +787,13 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.flash_on_rounded,
-                                      size: 18,
-                                      color: _canProceed(provider)
-                                          ? AppTheme.accent
-                                          : AppTheme.textSecondary),
+                                  Icon(
+                                    Icons.flash_on_rounded,
+                                    size: 18,
+                                    color: _canProceed(provider)
+                                        ? AppTheme.accent
+                                        : AppTheme.textSecondary,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Быстрый сплит',
@@ -698,6 +823,14 @@ class _AddPeopleScreenState extends State<AddPeopleScreen>
   }
 
   bool _canProceed(BillProvider provider) => provider.people.length >= 2;
+
+  void _prepareForSplit(BillProvider provider) {
+    if (provider.restoredFromDraft) {
+      provider.markRestoredDraftContinued();
+    } else {
+      provider.reset(keepPeople: true);
+    }
+  }
 }
 
 // ── Sub-widgets ──────────────────────────────────────────────────────────────
@@ -720,8 +853,9 @@ class _Avatar extends StatelessWidget {
     return CircleAvatar(
       radius: radius,
       backgroundColor: bgColor ?? AppTheme.primary,
-      backgroundImage:
-          avatarUrl != null ? CachedNetworkImageProvider(avatarUrl!) : null,
+      backgroundImage: avatarUrl != null
+          ? CachedNetworkImageProvider(avatarUrl!)
+          : null,
       child: avatarUrl == null
           ? Text(
               name.isNotEmpty ? name[0].toUpperCase() : '?',
@@ -741,10 +875,11 @@ class _GroupListTile extends StatelessWidget {
   final int memberCount;
   final VoidCallback onTap;
 
-  const _GroupListTile(
-      {required this.name,
-      required this.memberCount,
-      required this.onTap});
+  const _GroupListTile({
+    required this.name,
+    required this.memberCount,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -757,15 +892,23 @@ class _GroupListTile extends StatelessWidget {
           color: AppTheme.primary.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(10),
         ),
-        child:
-            const Icon(Icons.group_rounded, color: AppTheme.primary, size: 20),
+        child: const Icon(
+          Icons.group_rounded,
+          color: AppTheme.primary,
+          size: 20,
+        ),
       ),
-      title: Text(name,
-          style: const TextStyle(
-              color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
-      subtitle: Text('$memberCount участников',
-          style:
-              const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+      title: Text(
+        name,
+        style: const TextStyle(
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        '$memberCount участников',
+        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+      ),
       onTap: onTap,
     );
   }
@@ -782,10 +925,7 @@ class _EmptyParticipants extends StatelessWidget {
           const SizedBox(height: 12),
           const Text(
             'Добавьте участников',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 15,
-            ),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
           ),
         ],
       ),

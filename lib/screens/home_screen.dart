@@ -38,10 +38,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final raw = result['bills'] ?? result['results'] ?? [];
       if (mounted) {
         setState(() {
-          _recentBills =
-              List<Map<String, dynamic>>.from(raw is List ? raw : [])
-                  .take(5)
-                  .toList();
+          _recentBills = List<Map<String, dynamic>>.from(
+            raw is List ? raw : [],
+          ).take(5).toList();
           _loadingBills = false;
         });
       }
@@ -51,9 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openNewBill() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddPeopleScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AddPeopleScreen()));
   }
 
   @override
@@ -99,15 +98,21 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '$greeting, $userName',
-                                        style: AppTheme.headingStyle(fontSize: 26),
+                                        style: AppTheme.headingStyle(
+                                          fontSize: 26,
+                                        ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        DateFormat('d MMMM, EEEE', 'ru').format(now),
+                                        DateFormat(
+                                          'd MMMM, EEEE',
+                                          'ru',
+                                        ).format(now),
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: AppTheme.textSecondary,
@@ -146,7 +151,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     icon: Icons.camera_alt_rounded,
                                     label: 'Сканировать чек',
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xFFA78BFA), Color(0xFFC4B5FD)],
+                                      colors: [
+                                        Color(0xFFA78BFA),
+                                        Color(0xFFC4B5FD),
+                                      ],
                                     ),
                                     onTap: _openNewBill,
                                   ),
@@ -175,7 +183,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Text('Баланс', style: AppTheme.headingStyle(fontSize: 18)),
+                          child: Text(
+                            'Баланс',
+                            style: AppTheme.headingStyle(fontSize: 18),
+                          ),
                         ),
                       ),
                       const SliverToBoxAdapter(child: SizedBox(height: 12)),
@@ -188,7 +199,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             itemCount: debtProvider.balances.length.clamp(0, 4),
                             itemBuilder: (_, i) {
                               final b = debtProvider.balances[i];
-                              final amount = (b['balance'] as num?)?.toDouble() ?? 0;
+                              final amount =
+                                  (b['balance'] as num?)?.toDouble() ?? 0;
                               final name = b['name']?.toString() ?? '';
                               final isPos = amount > 0;
                               return Container(
@@ -201,24 +213,30 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ? AppTheme.success.withValues(alpha: 0.08)
                                       : AppTheme.danger.withValues(alpha: 0.08),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(name,
-                                          style: const TextStyle(
-                                            color: AppTheme.textPrimary,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                          ),
-                                          overflow: TextOverflow.ellipsis),
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          color: AppTheme.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                       const SizedBox(height: 4),
                                       Text(
                                         isPos
                                             ? '+${amount.abs().toStringAsFixed(0)} сом'
                                             : '-${amount.abs().toStringAsFixed(0)} сом',
-                                        style: AppTheme.moneyStyle(fontSize: 15).copyWith(
-                                          color: isPos ? AppTheme.success : AppTheme.danger,
-                                        ),
+                                        style: AppTheme.moneyStyle(fontSize: 15)
+                                            .copyWith(
+                                              color: isPos
+                                                  ? AppTheme.success
+                                                  : AppTheme.danger,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -237,15 +255,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
-                            Text('Последние разделения', style: AppTheme.headingStyle(fontSize: 18)),
+                            Text(
+                              'Последние разделения',
+                              style: AppTheme.headingStyle(fontSize: 18),
+                            ),
                             const Spacer(),
                             if (_recentBills.isNotEmpty)
-                              Text('Все',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppTheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  )),
+                              Text(
+                                'Все',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -253,16 +276,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
                     if (auth.isGuest)
-                      SliverToBoxAdapter(child: _GuestBillsPlaceholder(onCreateBill: _openNewBill))
+                      SliverToBoxAdapter(
+                        child: _GuestBillsPlaceholder(
+                          onCreateBill: _openNewBill,
+                        ),
+                      )
                     else if (_loadingBills)
                       const SliverToBoxAdapter(
                         child: Padding(
                           padding: EdgeInsets.all(32),
-                          child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.primary,
+                            ),
+                          ),
                         ),
                       )
                     else if (_recentBills.isEmpty)
-                      SliverToBoxAdapter(child: _EmptyBillsState(onCreateBill: _openNewBill))
+                      SliverToBoxAdapter(
+                        child: _EmptyBillsState(onCreateBill: _openNewBill),
+                      )
                     else
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -355,8 +388,11 @@ class _QuickActionCard extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_rounded,
-                size: 18, color: AppTheme.textSecondary),
+            const Icon(
+              Icons.arrow_forward_rounded,
+              size: 18,
+              color: AppTheme.textSecondary,
+            ),
           ],
         ),
       );
@@ -443,10 +479,14 @@ class _BillCard extends StatelessWidget {
       try {
         final date = DateTime.parse(createdAt);
         final diff = DateTime.now().difference(date);
-        if (diff.inDays == 0) dateStr = 'Сегодня';
-        else if (diff.inDays == 1) dateStr = 'Вчера';
-        else if (diff.inDays < 7) dateStr = '${diff.inDays} дн. назад';
-        else dateStr = DateFormat('d MMM').format(date);
+        if (diff.inDays == 0)
+          dateStr = 'Сегодня';
+        else if (diff.inDays == 1)
+          dateStr = 'Вчера';
+        else if (diff.inDays < 7)
+          dateStr = '${diff.inDays} дн. назад';
+        else
+          dateStr = DateFormat('d MMM').format(date);
       } catch (_) {}
     }
 
@@ -504,14 +544,30 @@ class _BillCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Text(dateStr,
-                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                      Text(
+                        dateStr,
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
                       if (people.isNotEmpty) ...[
                         const SizedBox(width: 8),
-                        const Text('·', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                        const Text(
+                          '·',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
                         const SizedBox(width: 8),
-                        Text('${people.length} чел.',
-                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                        Text(
+                          '${people.length} чел.',
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -551,7 +607,11 @@ class _GradientFAB extends StatelessWidget {
             ),
           ],
         ),
-        child: const Icon(Icons.add_rounded, color: Color(0xFF1A1A1A), size: 30),
+        child: const Icon(
+          Icons.add_rounded,
+          color: Color(0xFF1A1A1A),
+          size: 30,
+        ),
       ),
     );
   }
@@ -570,7 +630,11 @@ class _EmptyBillsState extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
         child: Column(
           children: [
-            const Icon(Icons.receipt_long_rounded, size: 44, color: AppTheme.primary),
+            const Icon(
+              Icons.receipt_long_rounded,
+              size: 44,
+              color: AppTheme.primary,
+            ),
             const SizedBox(height: 10),
             Text('Пока тут пусто', style: AppTheme.headingStyle(fontSize: 17)),
             const SizedBox(height: 6),
@@ -597,18 +661,26 @@ class _EmptyBillsState extends StatelessWidget {
                 ),
                 child: FilledButton.icon(
                   onPressed: onCreateBill,
-                  icon: const Icon(Icons.add_rounded, size: 20, color: Color(0xFF1A1A1A)),
-                  label: const Text('Создать счёт',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                      )),
+                  icon: const Icon(
+                    Icons.add_rounded,
+                    size: 20,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                  label: const Text(
+                    'Создать счёт',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
                     foregroundColor: const Color(0xFF1A1A1A),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ),
@@ -639,15 +711,22 @@ class _GuestBillsPlaceholder extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Войдите, чтобы сохранять историю',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      )),
+                  const Text(
+                    'Войдите, чтобы сохранять историю',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Счета гостей не сохраняются',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  Text(
+                    'Счета гостей не сохраняются',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -661,8 +740,13 @@ class _GuestBillsPlaceholder extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   textStyle: const TextStyle(fontSize: 13),
                 ),
                 child: const Text('Создать'),

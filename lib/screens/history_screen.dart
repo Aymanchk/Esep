@@ -69,8 +69,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final success = await auth.api.deleteBill(id);
     if (success && mounted) {
       setState(() => _bills.removeAt(index));
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Счёт удалён')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Счёт удалён')));
     }
   }
 
@@ -95,25 +96,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: Stack(
           children: [
             Positioned(
-              top: -50,
-              right: -40,
-              child: _Blob(color: const Color(0xFF22D3EE), size: 180),
-            ),
-            Positioned(
-              bottom: 120,
-              left: -30,
-              child: _Blob(color: const Color(0xFF67E8F9), size: 120),
-            ),
-            Positioned(
-              top: 200,
-              left: -50,
-              child: _Blob(color: const Color(0xFFA78BFA), size: 100),
+              top: -70,
+              right: -70,
+              child: _Blob(color: const Color(0xFF22D3EE), size: 130),
             ),
             SafeArea(
               child: Column(
@@ -159,35 +148,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     child: auth.isGuest
                         ? _GuestPlaceholder()
                         : _isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: AppTheme.primary),
-                              )
-                            : _filtered.isEmpty
-                                ? _EmptyState()
-                                : RefreshIndicator(
-                                    onRefresh: _loadBills,
-                                    color: AppTheme.primary,
-                                    child: ListView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      itemCount: _filtered.length,
-                                      itemBuilder: (_, i) {
-                                        final bill = _filtered[i];
-                                        final originalIndex =
-                                            _bills.indexOf(bill);
-                                        return _BillCard(
-                                          bill: bill,
-                                          onTap: () =>
-                                              _showBillDetail(bill),
-                                          onDelete: () => _deleteBill(
-                                            bill['id'].toString(),
-                                            originalIndex,
-                                          ),
-                                        );
-                                      },
-                                    ),
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.primary,
+                            ),
+                          )
+                        : _filtered.isEmpty
+                        ? _EmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _loadBills,
+                            color: AppTheme.primary,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: _filtered.length,
+                              itemBuilder: (_, i) {
+                                final bill = _filtered[i];
+                                final originalIndex = _bills.indexOf(bill);
+                                return _BillCard(
+                                  bill: bill,
+                                  onTap: () => _showBillDetail(bill),
+                                  onDelete: () => _deleteBill(
+                                    bill['id'].toString(),
+                                    originalIndex,
                                   ),
+                                );
+                              },
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -199,12 +188,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _showBillDetail(Map<String, dynamic> bill) {
-    final items =
-        List<Map<String, dynamic>>.from(bill['items'] ?? []);
-    final people =
-        List<Map<String, dynamic>>.from(bill['people'] ?? []);
-    final assignments =
-        Map<String, dynamic>.from(bill['assignments'] ?? {});
+    final items = List<Map<String, dynamic>>.from(bill['items'] ?? []);
+    final people = List<Map<String, dynamic>>.from(bill['people'] ?? []);
+    final assignments = Map<String, dynamic>.from(bill['assignments'] ?? {});
     final total = _asDouble(bill['total']);
     final servicePercent = _asDouble(bill['service_charge_percent']);
 
@@ -241,7 +227,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Text(
                 _formatDate(bill['created_at']?.toString()),
                 style: const TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 13),
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -252,9 +240,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Итого',
-                        style: TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 15)),
+                    const Text(
+                      'Итого',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 15,
+                      ),
+                    ),
                     Text(
                       '${total.toStringAsFixed(0)} ${_currencySymbol(bill)}',
                       style: AppTheme.moneyStyle(fontSize: 22),
@@ -267,42 +259,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 Text(
                   'Обслуживание: ${servicePercent.toStringAsFixed(0)}%',
                   style: const TextStyle(
-                      color: AppTheme.textSecondary, fontSize: 12),
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ],
               const SizedBox(height: 20),
 
               // Items
-              const Text('Позиции',
-                  style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600)),
+              const Text(
+                'Позиции',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
-              ...items.map((item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(item['name']?.toString() ?? '',
-                            style: const TextStyle(
-                                color: AppTheme.textSecondary)),
-                        Text(
-                          '${_asDouble(item['price']).toStringAsFixed(0)} ${_currencySymbol(bill)}',
-                          style: const TextStyle(
-                              color: AppTheme.textPrimary),
-                        ),
-                      ],
-                    ),
-                  )),
+              ...items.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        item['name']?.toString() ?? '',
+                        style: const TextStyle(color: AppTheme.textSecondary),
+                      ),
+                      Text(
+                        '${_asDouble(item['price']).toStringAsFixed(0)} ${_currencySymbol(bill)}',
+                        style: const TextStyle(color: AppTheme.textPrimary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
 
               // People
-              const Text('Участники',
-                  style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600)),
+              const Text(
+                'Участники',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -318,13 +320,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   return LiquidGlass(
                     borderRadius: BorderRadius.circular(12),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     child: Column(
                       children: [
-                        Text(p['name']?.toString() ?? '',
-                            style: const TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontWeight: FontWeight.w600)),
+                        Text(
+                          p['name']?.toString() ?? '',
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         Text(
                           '${personTotal.toStringAsFixed(0)} ${_currencySymbol(bill)}',
                           style: AppTheme.moneyStyle(fontSize: 12),
@@ -405,8 +412,11 @@ class _FilterChip extends StatelessWidget {
   final String label;
   final bool active;
   final VoidCallback onTap;
-  const _FilterChip(
-      {required this.label, required this.active, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -441,8 +451,11 @@ class _BillCard extends StatelessWidget {
   final Map<String, dynamic> bill;
   final VoidCallback onTap;
   final VoidCallback onDelete;
-  const _BillCard(
-      {required this.bill, required this.onTap, required this.onDelete});
+  const _BillCard({
+    required this.bill,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   ExpenseCategory? get _cat {
     final catId = bill['category']?.toString();
@@ -488,10 +501,7 @@ class _BillCard extends StatelessWidget {
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border(
-            left: BorderSide(
-              color: cat?.color ?? AppTheme.primary,
-              width: 3,
-            ),
+            left: BorderSide(color: cat?.color ?? AppTheme.primary, width: 3),
           ),
           boxShadow: [
             BoxShadow(
@@ -511,7 +521,9 @@ class _BillCard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: (cat?.color ?? AppTheme.primary).withValues(alpha: 0.12),
+                      color: (cat?.color ?? AppTheme.primary).withValues(
+                        alpha: 0.12,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -535,10 +547,13 @@ class _BillCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(dateStr,
-                            style: const TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 12)),
+                        Text(
+                          dateStr,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -551,23 +566,33 @@ class _BillCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(Icons.receipt_long_rounded,
-                      size: 13,
-                      color: AppTheme.textSecondary.withValues(alpha: 0.6)),
+                  Icon(
+                    Icons.receipt_long_rounded,
+                    size: 13,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                  ),
                   const SizedBox(width: 4),
-                  Text('${items.length} позиций',
-                      style: TextStyle(
-                          color: AppTheme.textSecondary.withValues(alpha: 0.6),
-                          fontSize: 12)),
+                  Text(
+                    '${items.length} позиций',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Icon(Icons.people_rounded,
-                      size: 13,
-                      color: AppTheme.textSecondary.withValues(alpha: 0.6)),
+                  Icon(
+                    Icons.people_rounded,
+                    size: 13,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                  ),
                   const SizedBox(width: 4),
-                  Text('${people.length} чел.',
-                      style: TextStyle(
-                          color: AppTheme.textSecondary.withValues(alpha: 0.6),
-                          fontSize: 12)),
+                  Text(
+                    '${people.length} чел.',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
                   const Spacer(),
                   GestureDetector(
                     onTap: () => showDialog(
@@ -576,22 +601,27 @@ class _BillCard extends StatelessWidget {
                         title: const Text('Удалить счёт?'),
                         actions: [
                           TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Отмена')),
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Отмена'),
+                          ),
                           TextButton(
                             onPressed: () {
                               Navigator.pop(ctx);
                               onDelete();
                             },
-                            child: const Text('Удалить',
-                                style: TextStyle(color: AppTheme.danger)),
+                            child: const Text(
+                              'Удалить',
+                              style: TextStyle(color: AppTheme.danger),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    child: Icon(Icons.delete_outline_rounded,
-                        size: 18,
-                        color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 18,
+                      color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                    ),
                   ),
                 ],
               ),
@@ -610,14 +640,19 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.receipt_long_rounded, size: 52, color: AppTheme.primary),
+          const Icon(
+            Icons.receipt_long_rounded,
+            size: 52,
+            color: AppTheme.primary,
+          ),
           const SizedBox(height: 14),
-          Text('Счетов пока нет',
-              style: AppTheme.headingStyle(fontSize: 17)),
+          Text('Счетов пока нет', style: AppTheme.headingStyle(fontSize: 17)),
           const SizedBox(height: 6),
-          const Text('Разделите первый счёт,\nи он появится здесь',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          const Text(
+            'Разделите первый счёт,\nи он появится здесь',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
         ],
       ),
     );

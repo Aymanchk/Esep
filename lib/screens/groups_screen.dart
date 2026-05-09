@@ -70,8 +70,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
                             interactive: true,
                             onTap: () => _showCreateGroupSheet(context),
                             padding: const EdgeInsets.all(10),
-                            child: const Icon(Icons.add_rounded,
-                                size: 20, color: AppTheme.primary),
+                            child: const Icon(
+                              Icons.add_rounded,
+                              size: 20,
+                              color: AppTheme.primary,
+                            ),
                           ),
                       ],
                     ),
@@ -82,35 +85,37 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     child: auth.isGuest
                         ? _GuestPlaceholder()
                         : groupProvider.isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: AppTheme.primary))
-                            : groupProvider.groups.isEmpty
-                                ? _EmptyPlaceholder(
-                                    onCreateTap: () =>
-                                        _showCreateGroupSheet(context))
-                                : RefreshIndicator(
-                                    onRefresh: () => groupProvider.loadGroups(),
-                                    color: AppTheme.primary,
-                                    child: ListView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      itemCount: groupProvider.groups.length,
-                                      itemBuilder: (context, index) {
-                                        final group =
-                                            groupProvider.groups[index];
-                                        return _GroupCard(
-                                          group: group,
-                                          onEdit: () =>
-                                              _showEditGroupSheet(context, group),
-                                          onDelete: () async {
-                                            final id = group['id'] as int;
-                                            await groupProvider.deleteGroup(id);
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.primary,
+                            ),
+                          )
+                        : groupProvider.groups.isEmpty
+                        ? _EmptyPlaceholder(
+                            onCreateTap: () => _showCreateGroupSheet(context),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: () => groupProvider.loadGroups(),
+                            color: AppTheme.primary,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: groupProvider.groups.length,
+                              itemBuilder: (context, index) {
+                                final group = groupProvider.groups[index];
+                                return _GroupCard(
+                                  group: group,
+                                  onEdit: () =>
+                                      _showEditGroupSheet(context, group),
+                                  onDelete: () async {
+                                    final id = group['id'] as int;
+                                    await groupProvider.deleteGroup(id);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -135,7 +140,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
         builder: (ctx, setModalState) => _GlassSheet(
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-                20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+              20,
+              20,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,38 +208,53 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       itemCount: searchResults.length,
                       itemBuilder: (_, i) {
                         final user = searchResults[i];
-                        final alreadyAdded = selectedMembers
-                            .any((m) => m['id'] == user['id']);
+                        final alreadyAdded = selectedMembers.any(
+                          (m) => m['id'] == user['id'],
+                        );
                         return ListTile(
                           dense: true,
                           leading: CircleAvatar(
                             radius: 16,
-                            backgroundColor:
-                                AppTheme.primary.withValues(alpha: 0.2),
+                            backgroundColor: AppTheme.primary.withValues(
+                              alpha: 0.2,
+                            ),
                             child: Text(
                               (user['name']?.toString() ?? '?')[0]
                                   .toUpperCase(),
                               style: const TextStyle(
-                                  color: AppTheme.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold),
+                                color: AppTheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          title: Text(user['name']?.toString() ?? '',
-                              style: const TextStyle(
-                                  color: AppTheme.textPrimary, fontSize: 14)),
-                          subtitle: Text(user['email']?.toString() ?? '',
-                              style: const TextStyle(
-                                  color: AppTheme.textSecondary, fontSize: 11)),
+                          title: Text(
+                            user['name']?.toString() ?? '',
+                            style: const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: Text(
+                            user['email']?.toString() ?? '',
+                            style: const TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
                           trailing: alreadyAdded
-                              ? const Icon(Icons.check_rounded,
-                                  color: AppTheme.success, size: 18)
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: AppTheme.success,
+                                  size: 18,
+                                )
                               : null,
                           onTap: alreadyAdded
                               ? null
                               : () {
                                   setModalState(
-                                      () => selectedMembers.add(user));
+                                    () => selectedMembers.add(user),
+                                  );
                                 },
                         );
                       },
@@ -245,27 +269,36 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     children: selectedMembers.map((m) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color:
-                                  AppTheme.primary.withValues(alpha: 0.3)),
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(m['name']?.toString() ?? '',
-                                style: const TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontSize: 13)),
+                            Text(
+                              m['name']?.toString() ?? '',
+                              style: const TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 13,
+                              ),
+                            ),
                             const SizedBox(width: 4),
                             GestureDetector(
                               onTap: () => setModalState(
-                                  () => selectedMembers.remove(m)),
-                              child: const Icon(Icons.close_rounded,
-                                  size: 14, color: AppTheme.textSecondary),
+                                () => selectedMembers.remove(m),
+                              ),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 14,
+                                color: AppTheme.textSecondary,
+                              ),
                             ),
                           ],
                         ),
@@ -321,12 +354,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
     );
   }
 
-  void _showEditGroupSheet(
-      BuildContext context, Map<String, dynamic> group) {
-    final nameController =
-        TextEditingController(text: group['name']?.toString() ?? '');
-    final members =
-        List<Map<String, dynamic>>.from(group['members'] ?? []);
+  void _showEditGroupSheet(BuildContext context, Map<String, dynamic> group) {
+    final nameController = TextEditingController(
+      text: group['name']?.toString() ?? '',
+    );
+    final members = List<Map<String, dynamic>>.from(group['members'] ?? []);
     final searchController = TextEditingController();
     List<Map<String, dynamic>> searchResults = [];
 
@@ -338,7 +370,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
         builder: (ctx, setModalState) => _GlassSheet(
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-                20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+              20,
+              20,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,29 +437,39 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       itemCount: searchResults.length,
                       itemBuilder: (_, i) {
                         final user = searchResults[i];
-                        final alreadyAdded =
-                            members.any((m) => m['id'] == user['id']);
+                        final alreadyAdded = members.any(
+                          (m) => m['id'] == user['id'],
+                        );
                         return ListTile(
                           dense: true,
                           leading: CircleAvatar(
                             radius: 16,
-                            backgroundColor:
-                                AppTheme.primary.withValues(alpha: 0.2),
+                            backgroundColor: AppTheme.primary.withValues(
+                              alpha: 0.2,
+                            ),
                             child: Text(
                               (user['name']?.toString() ?? '?')[0]
                                   .toUpperCase(),
                               style: const TextStyle(
-                                  color: AppTheme.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold),
+                                color: AppTheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          title: Text(user['name']?.toString() ?? '',
-                              style: const TextStyle(
-                                  color: AppTheme.textPrimary, fontSize: 14)),
+                          title: Text(
+                            user['name']?.toString() ?? '',
+                            style: const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                          ),
                           trailing: alreadyAdded
-                              ? const Icon(Icons.check_rounded,
-                                  color: AppTheme.success, size: 18)
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: AppTheme.success,
+                                  size: 18,
+                                )
                               : null,
                           onTap: alreadyAdded
                               ? null
@@ -437,9 +483,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 ],
                 if (members.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  const Text('Участники:',
-                      style: TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 13)),
+                  const Text(
+                    'Участники:',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -447,26 +497,35 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     children: members.map((m) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.surfaceLight,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.08)),
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(m['name']?.toString() ?? '',
-                                style: const TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontSize: 13)),
+                            Text(
+                              m['name']?.toString() ?? '',
+                              style: const TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 13,
+                              ),
+                            ),
                             const SizedBox(width: 4),
                             GestureDetector(
                               onTap: () =>
                                   setModalState(() => members.remove(m)),
-                              child: const Icon(Icons.close_rounded,
-                                  size: 14, color: AppTheme.textSecondary),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 14,
+                                color: AppTheme.textSecondary,
+                              ),
                             ),
                           ],
                         ),
@@ -478,8 +537,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 GestureDetector(
                   onTap: () async {
                     if (nameController.text.trim().isEmpty) return;
-                    final memberIds =
-                        members.map((m) => m['id'] as int).toList();
+                    final memberIds = members
+                        .map((m) => m['id'] as int)
+                        .toList();
                     final provider = context.read<GroupProvider>();
                     await provider.updateGroup(
                       groupId: group['id'] as int,
@@ -537,8 +597,7 @@ class _GroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = group['name']?.toString() ?? '';
-    final members =
-        List<Map<String, dynamic>>.from(group['members'] ?? []);
+    final members = List<Map<String, dynamic>>.from(group['members'] ?? []);
     final memberCount = group['member_count'] as int? ?? members.length;
 
     return Container(
@@ -562,8 +621,11 @@ class _GroupCard extends StatelessWidget {
                     color: AppTheme.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.group_rounded,
-                      color: AppTheme.primary, size: 22),
+                  child: const Icon(
+                    Icons.group_rounded,
+                    color: AppTheme.primary,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -589,11 +651,15 @@ class _GroupCard extends StatelessWidget {
                   ),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded,
-                      color: AppTheme.textSecondary, size: 20),
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: AppTheme.textSecondary,
+                    size: 20,
+                  ),
                   color: AppTheme.surfaceLight,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   onSelected: (value) {
                     if (value == 'edit') onEdit();
                     if (value == 'delete') {
@@ -602,29 +668,33 @@ class _GroupCard extends StatelessWidget {
                         builder: (ctx) => AlertDialog(
                           backgroundColor: AppTheme.surface,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20)),
-                          title: const Text('Удалить группу?',
-                              style:
-                                  TextStyle(color: AppTheme.textPrimary)),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          title: const Text(
+                            'Удалить группу?',
+                            style: TextStyle(color: AppTheme.textPrimary),
+                          ),
                           content: const Text(
-                              'Это действие нельзя отменить.',
-                              style: TextStyle(
-                                  color: AppTheme.textSecondary)),
+                            'Это действие нельзя отменить.',
+                            style: TextStyle(color: AppTheme.textSecondary),
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Отмена',
-                                  style: TextStyle(
-                                      color: AppTheme.textSecondary)),
+                              child: const Text(
+                                'Отмена',
+                                style: TextStyle(color: AppTheme.textSecondary),
+                              ),
                             ),
                             TextButton(
                               onPressed: () {
                                 Navigator.pop(ctx);
                                 onDelete();
                               },
-                              child: const Text('Удалить',
-                                  style:
-                                      TextStyle(color: AppTheme.danger)),
+                              child: const Text(
+                                'Удалить',
+                                style: TextStyle(color: AppTheme.danger),
+                              ),
                             ),
                           ],
                         ),
@@ -636,11 +706,16 @@ class _GroupCard extends StatelessWidget {
                       value: 'edit',
                       child: Row(
                         children: [
-                          Icon(Icons.edit_rounded,
-                              size: 16, color: AppTheme.textSecondary),
+                          Icon(
+                            Icons.edit_rounded,
+                            size: 16,
+                            color: AppTheme.textSecondary,
+                          ),
                           SizedBox(width: 8),
-                          Text('Редактировать',
-                              style: TextStyle(color: AppTheme.textPrimary)),
+                          Text(
+                            'Редактировать',
+                            style: TextStyle(color: AppTheme.textPrimary),
+                          ),
                         ],
                       ),
                     ),
@@ -648,11 +723,16 @@ class _GroupCard extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_rounded,
-                              size: 16, color: AppTheme.danger),
+                          Icon(
+                            Icons.delete_rounded,
+                            size: 16,
+                            color: AppTheme.danger,
+                          ),
                           SizedBox(width: 8),
-                          Text('Удалить',
-                              style: TextStyle(color: AppTheme.danger)),
+                          Text(
+                            'Удалить',
+                            style: TextStyle(color: AppTheme.danger),
+                          ),
                         ],
                       ),
                     ),
@@ -670,8 +750,9 @@ class _GroupCard extends StatelessWidget {
                       margin: const EdgeInsets.only(right: 6),
                       child: CircleAvatar(
                         radius: 16,
-                        backgroundColor:
-                            AppTheme.primary.withValues(alpha: 0.2),
+                        backgroundColor: AppTheme.primary.withValues(
+                          alpha: 0.2,
+                        ),
                         child: Text(
                           mName[0].toUpperCase(),
                           style: const TextStyle(
@@ -691,15 +772,17 @@ class _GroupCard extends StatelessWidget {
                         color: AppTheme.surfaceLight,
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1)),
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
                       ),
                       child: Center(
                         child: Text(
                           '+${members.length - 6}',
                           style: const TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600),
+                            color: AppTheme.textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -751,22 +834,25 @@ class _EmptyPlaceholder extends StatelessWidget {
         children: [
           const Text('\u{1F465}', style: TextStyle(fontSize: 52)),
           const SizedBox(height: 14),
-          const Text('Нет групп',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold)),
+          const Text(
+            'Нет групп',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 6),
-          const Text('Создайте группу, чтобы быстро\nдобавлять друзей в счёт',
-              textAlign: TextAlign.center,
-              style:
-                  TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          const Text(
+            'Создайте группу, чтобы быстро\nдобавлять друзей в счёт',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
           const SizedBox(height: 20),
           GestureDetector(
             onTap: onCreateTap,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(14),
@@ -783,11 +869,14 @@ class _EmptyPlaceholder extends StatelessWidget {
                 children: [
                   Icon(Icons.add_rounded, color: Color(0xFF1A1A1A), size: 18),
                   SizedBox(width: 6),
-                  Text('Создать группу',
-                      style: TextStyle(
-                          color: Color(0xFF1A1A1A),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    'Создать группу',
+                    style: TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -807,14 +896,19 @@ class _GuestPlaceholder extends StatelessWidget {
         children: [
           Text('\u{1F465}', style: TextStyle(fontSize: 52)),
           SizedBox(height: 14),
-          Text('Войдите в аккаунт',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            'Войдите в аккаунт',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           SizedBox(height: 6),
-          Text('Чтобы управлять группами друзей',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(
+            'Чтобы управлять группами друзей',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
         ],
       ),
     );

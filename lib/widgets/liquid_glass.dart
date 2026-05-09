@@ -44,13 +44,15 @@ class _LiquidGlassState extends State<LiquidGlass> {
     Widget glass = ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
-        filter:
-            ImageFilter.blur(sigmaX: widget.blurSigma, sigmaY: widget.blurSigma),
+        filter: ImageFilter.blur(
+          sigmaX: widget.blurSigma,
+          sigmaY: widget.blurSigma,
+        ),
         child: Container(
           padding: widget.padding,
           decoration: BoxDecoration(
-            color: widget.fillColor ??
-                Colors.white.withValues(alpha: fillAlpha),
+            color:
+                widget.fillColor ?? Colors.white.withValues(alpha: fillAlpha),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,

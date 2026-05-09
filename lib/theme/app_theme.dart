@@ -3,17 +3,17 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ── Core palette — Dark Premium (Fintech-style) ────────────────────────────
-  static const Color background = Color(0xFF0F172A);       // deep slate
-  static const Color backgroundLight = Color(0xFF1E293B);   // gradient end
-  static const Color surface = Color(0xFF1E293B);           // card / elevated
-  static const Color surfaceLight = Color(0xFF334155);       // lighter surface
-  static const Color primary = Color(0xFF22D3EE);            // neon cyan
-  static const Color primaryLight = Color(0xFF67E8F9);       // light cyan
-  static const Color accent = Color(0xFFA78BFA);             // soft violet
-  static const Color success = Color(0xFF34D399);            // emerald
-  static const Color danger = Color(0xFFFF6B6B);             // soft coral
-  static const Color textPrimary = Color(0xFFF1F5F9);        // near-white
-  static const Color textSecondary = Color(0xFF94A3B8);      // slate grey
+  static const Color background = Color(0xFF0F172A); // deep slate
+  static const Color backgroundLight = Color(0xFF1E293B); // gradient end
+  static const Color surface = Color(0xFF1E293B); // card / elevated
+  static const Color surfaceLight = Color(0xFF334155); // lighter surface
+  static const Color primary = Color(0xFF22D3EE); // neon cyan
+  static const Color primaryLight = Color(0xFF67E8F9); // light cyan
+  static const Color accent = Color(0xFFA78BFA); // soft violet
+  static const Color success = Color(0xFF34D399); // emerald
+  static const Color danger = Color(0xFFFF6B6B); // soft coral
+  static const Color textPrimary = Color(0xFFF1F5F9); // near-white
+  static const Color textSecondary = Color(0xFF94A3B8); // slate grey
 
   // Legacy aliases
   static const Color green = success;
@@ -45,13 +45,12 @@ class AppTheme {
   );
 
   // ── Typography helpers ────────────────────────────────────────────────────
-  static TextStyle headingStyle({double fontSize = 28}) =>
-      GoogleFonts.nunito(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w900,
-        color: textPrimary,
-        letterSpacing: -0.5,
-      );
+  static TextStyle headingStyle({double fontSize = 28}) => GoogleFonts.nunito(
+    fontSize: fontSize,
+    fontWeight: FontWeight.w900,
+    color: textPrimary,
+    letterSpacing: -0.5,
+  );
 
   static TextStyle moneyStyle({double fontSize = 22}) =>
       GoogleFonts.jetBrainsMono(
@@ -60,12 +59,11 @@ class AppTheme {
         color: primary,
       );
 
-  static TextStyle bodyStyle({double fontSize = 14}) =>
-      GoogleFonts.nunito(
-        fontSize: fontSize,
-        fontWeight: FontWeight.normal,
-        color: textPrimary,
-      );
+  static TextStyle bodyStyle({double fontSize = 14}) => GoogleFonts.nunito(
+    fontSize: fontSize,
+    fontWeight: FontWeight.normal,
+    color: textPrimary,
+  );
 
   // ── Theme Data ────────────────────────────────────────────────────────────
   static ThemeData get darkTheme {
@@ -75,10 +73,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: background,
-      textTheme: base.apply(
-        bodyColor: textPrimary,
-        displayColor: textPrimary,
-      ),
+      textTheme: base.apply(bodyColor: textPrimary, displayColor: textPrimary),
       colorScheme: const ColorScheme.dark(
         primary: primary,
         secondary: primaryLight,
@@ -135,8 +130,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: danger, width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         labelStyle: const TextStyle(color: textSecondary),
         hintStyle: const TextStyle(color: textSecondary),
         prefixIconColor: textSecondary,
@@ -176,16 +173,12 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: surfaceLight,
         contentTextStyle: const TextStyle(color: textPrimary),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         behavior: SnackBarBehavior.floating,
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         titleTextStyle: GoogleFonts.nunito(
           color: textPrimary,
           fontSize: 20,

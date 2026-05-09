@@ -26,7 +26,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _SlideData(
       icon: Icons.account_balance_wallet_rounded,
       title: 'Дели всё честно',
-      subtitle: 'Ресторан, продукты, поездка, аренда — разделяйте любые расходы без споров',
+      subtitle:
+          'Ресторан, продукты, поездка, аренда — разделяйте любые расходы без споров',
     ),
     _SlideData(
       icon: Icons.camera_alt_rounded,
@@ -53,10 +54,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       duration: const Duration(milliseconds: 2800),
     )..repeat(reverse: true);
 
-    _fadeAnim = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
+    _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _floatAnim = Tween<double>(begin: 0, end: 12).animate(
       CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
@@ -70,17 +68,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     super.dispose();
   }
 
-  void _continueAsGuest() {
-    context.read<AuthProvider>().continueAsGuest();
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeShell()),
-    );
+  Future<void> _continueAsGuest() async {
+    final auth = context.read<AuthProvider>();
+    await auth.markOnboardingSeen();
+    auth.continueAsGuest();
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
   }
 
-  void _goToLogin() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+  Future<void> _goToLogin() async {
+    await context.read<AuthProvider>().markOnboardingSeen();
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   @override
@@ -140,14 +143,19 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                         shape: BoxShape.circle,
                                         gradient: RadialGradient(
                                           colors: [
-                                            AppTheme.primary.withValues(alpha: 0.3),
+                                            AppTheme.primary.withValues(
+                                              alpha: 0.3,
+                                            ),
                                             Colors.transparent,
                                           ],
                                         ),
                                       ),
                                       child: Center(
-                                        child: Icon(slide.icon,
-                                            size: 72, color: AppTheme.primary),
+                                        child: Icon(
+                                          slide.icon,
+                                          size: 72,
+                                          color: AppTheme.primary,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -205,7 +213,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         children: [
                           _FeaturePill(Icons.camera_alt_rounded, 'Скан чека'),
                           const SizedBox(width: 8),
-                          _FeaturePill(Icons.account_balance_wallet_rounded, 'Долги'),
+                          _FeaturePill(
+                            Icons.account_balance_wallet_rounded,
+                            'Долги',
+                          ),
                           const SizedBox(width: 8),
                           _FeaturePill(Icons.chat_bubble_rounded, 'Чат'),
                         ],
@@ -229,7 +240,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.primary.withValues(alpha: 0.40),
+                                    color: AppTheme.primary.withValues(
+                                      alpha: 0.40,
+                                    ),
                                     blurRadius: 20,
                                     offset: const Offset(0, 6),
                                   ),

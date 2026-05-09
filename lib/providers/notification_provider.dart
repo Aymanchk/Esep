@@ -18,8 +18,9 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final result = await _api.getNotifications();
-      _notifications =
-          List<Map<String, dynamic>>.from(result['notifications'] ?? []);
+      _notifications = List<Map<String, dynamic>>.from(
+        result['notifications'] ?? [],
+      );
       _unreadCount = result['unread_count'] as int? ?? 0;
     } catch (_) {}
     _isLoading = false;

@@ -1,10 +1,12 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
 
 urlpatterns = [
     # Auth
     path("auth/register/", views.register_view, name="register"),
     path("auth/login/", views.login_view, name="login"),
+    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("auth/me/", views.profile_view, name="profile"),
     path("auth/me/avatar/", views.upload_avatar, name="upload-avatar"),
     # Users
@@ -19,6 +21,7 @@ urlpatterns = [
     path("bills/<int:pk>/", views.BillDetailView.as_view(), name="bill-detail"),
     # Debts
     path("debts/", views.debts_view, name="debts"),
+    path("debts/settle/", views.debt_settle_view, name="debt-settle"),
     path("debts/<int:debt_id>/pay/", views.debt_mark_paid_view, name="debt-pay"),
     path("debts/summary/", views.debt_summary_view, name="debt-summary"),
     # Friend Groups

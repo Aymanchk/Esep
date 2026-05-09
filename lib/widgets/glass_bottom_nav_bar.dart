@@ -25,8 +25,11 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar>
   static const _tabs = [
     _TabDef(Icons.home_rounded, Icons.home_rounded, 'Главная'),
     _TabDef(Icons.history_rounded, Icons.history_rounded, 'История'),
-    _TabDef(Icons.account_balance_wallet_rounded,
-        Icons.account_balance_wallet_rounded, 'Долги'),
+    _TabDef(
+      Icons.account_balance_wallet_rounded,
+      Icons.account_balance_wallet_rounded,
+      'Долги',
+    ),
     _TabDef(Icons.chat_bubble_rounded, Icons.chat_bubble_rounded, 'Чат'),
     _TabDef(Icons.person_rounded, Icons.person_rounded, 'Профиль'),
   ];
@@ -140,7 +143,9 @@ class _NavItem extends StatelessWidget {
                   right: -10,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 5, vertical: 1),
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.danger,
                       borderRadius: BorderRadius.circular(9),
@@ -189,7 +194,8 @@ class _NavItem extends StatelessWidget {
                     boxShadow: [
                       BoxShadow(
                         color: AppTheme.primary.withValues(
-                            alpha: 0.4 + pulse * 0.3),
+                          alpha: 0.4 + pulse * 0.3,
+                        ),
                         blurRadius: 6 + pulse * 4,
                         spreadRadius: 1 + pulse,
                       ),

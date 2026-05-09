@@ -39,12 +39,11 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
   }
 
   void _calculate() {
-    final total =
-        double.tryParse(_totalController.text.replaceAll(',', '.'));
+    final total = double.tryParse(_totalController.text.replaceAll(',', '.'));
     if (total == null || total <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите сумму')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Введите сумму')));
       return;
     }
     final provider = context.read<BillProvider>();
@@ -65,7 +64,8 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Войдите в аккаунт, чтобы сохранять счета')),
+            content: Text('Войдите в аккаунт, чтобы сохранять счета'),
+          ),
         );
       }
       return;
@@ -86,21 +86,22 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
         currency: provider.currency.code,
         splitMode: provider.splitMode.name,
       );
+      await provider.clearDraft();
       if (mounted) {
         setState(() {
           _saved = true;
           _saving = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Счёт сохранён')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Счёт сохранён')));
       }
     } catch (_) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось сохранить')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Не удалось сохранить')));
       }
     }
   }
@@ -112,9 +113,7 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: Stack(
           children: [
             Positioned(
@@ -141,9 +140,10 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                             borderRadius: BorderRadius.circular(12),
                             padding: const EdgeInsets.all(10),
                             child: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                size: 18,
-                                color: AppTheme.textPrimary),
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -161,18 +161,23 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                         // Category badge
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
-                            color: provider.category.color
-                                .withValues(alpha: 0.15),
+                            color: provider.category.color.withValues(
+                              alpha: 0.15,
+                            ),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(provider.category.icon,
-                                  size: 14,
-                                  color: provider.category.color),
+                              Icon(
+                                provider.category.icon,
+                                size: 14,
+                                color: provider.category.color,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 provider.category.name,
@@ -218,23 +223,26 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                                   children: provider.people.map((p) {
                                     return Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 8),
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: p.avatarColor
-                                            .withValues(alpha: 0.15),
-                                        borderRadius:
-                                            BorderRadius.circular(50),
+                                        color: p.avatarColor.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(50),
                                         border: Border.all(
-                                            color: p.avatarColor
-                                                .withValues(alpha: 0.3)),
+                                          color: p.avatarColor.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           CircleAvatar(
                                             radius: 12,
-                                            backgroundColor:
-                                                p.avatarColor,
+                                            backgroundColor: p.avatarColor,
                                             child: Text(
                                               p.name[0].toUpperCase(),
                                               style: const TextStyle(
@@ -271,13 +279,15 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                               padding: const EdgeInsets.all(24),
                               child: Column(
                                 children: [
-                                  const Icon(Icons.flash_on_rounded,
-                                      size: 40, color: AppTheme.accent),
+                                  const Icon(
+                                    Icons.flash_on_rounded,
+                                    size: 40,
+                                    color: AppTheme.accent,
+                                  ),
                                   const SizedBox(height: 12),
                                   Text(
                                     'Введите общую сумму',
-                                    style: AppTheme.headingStyle(
-                                        fontSize: 18),
+                                    style: AppTheme.headingStyle(fontSize: 18),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
@@ -295,19 +305,22 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                                     style: AppTheme.moneyStyle(fontSize: 36),
                                     keyboardType:
                                         const TextInputType.numberWithOptions(
-                                            decimal: true),
+                                          decimal: true,
+                                        ),
                                     inputFormatters: [
                                       FilteringTextInputFormatter.allow(
-                                          RegExp(r'[\d.,]'))
+                                        RegExp(r'[\d.,]'),
+                                      ),
                                     ],
                                     decoration: InputDecoration(
                                       hintText: '0',
                                       hintStyle:
-                                          AppTheme.moneyStyle(fontSize: 36)
-                                              .copyWith(
-                                        color: AppTheme.textSecondary
-                                            .withValues(alpha: 0.3),
-                                      ),
+                                          AppTheme.moneyStyle(
+                                            fontSize: 36,
+                                          ).copyWith(
+                                            color: AppTheme.textSecondary
+                                                .withValues(alpha: 0.3),
+                                          ),
                                       suffixText: currSymbol,
                                       suffixStyle: const TextStyle(
                                         color: AppTheme.textSecondary,
@@ -332,27 +345,33 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                             FadeTransition(
                               opacity: _resultController,
                               child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: const Offset(0, 0.2),
-                                  end: Offset.zero,
-                                ).animate(CurvedAnimation(
-                                  parent: _resultController,
-                                  curve: Curves.easeOutBack,
-                                )),
+                                position:
+                                    Tween<Offset>(
+                                      begin: const Offset(0, 0.2),
+                                      end: Offset.zero,
+                                    ).animate(
+                                      CurvedAnimation(
+                                        parent: _resultController,
+                                        curve: Curves.easeOutBack,
+                                      ),
+                                    ),
                                 child: Column(
                                   children: [
                                     // Success badge
                                     LiquidGlass(
-                                      borderRadius:
-                                          BorderRadius.circular(50),
+                                      borderRadius: BorderRadius.circular(50),
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 20, vertical: 10),
+                                        horizontal: 20,
+                                        vertical: 10,
+                                      ),
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.check_circle_rounded,
-                                              size: 18,
-                                              color: AppTheme.success),
+                                          Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 18,
+                                            color: AppTheme.success,
+                                          ),
                                           SizedBox(width: 8),
                                           Text(
                                             'Готово!',
@@ -370,22 +389,21 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
 
                                     // Total
                                     LiquidGlass(
-                                      borderRadius:
-                                          BorderRadius.circular(24),
+                                      borderRadius: BorderRadius.circular(24),
                                       padding: const EdgeInsets.all(20),
                                       child: Column(
                                         children: [
                                           Text(
                                             '${provider.total.toStringAsFixed(0)} $currSymbol',
                                             style: AppTheme.moneyStyle(
-                                                fontSize: 32),
+                                              fontSize: 32,
+                                            ),
                                           ),
                                           if (provider.serviceChargeEnabled)
                                             Text(
                                               'включая ${provider.serviceChargePercent.toStringAsFixed(0)}% обслуживания',
                                               style: const TextStyle(
-                                                color:
-                                                    AppTheme.textSecondary,
+                                                color: AppTheme.textSecondary,
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -397,19 +415,23 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
 
                                     // Per-person cards
                                     ...provider.people.map((person) {
-                                      final perPerson = provider
-                                          .getPersonTotal(person.id);
+                                      final perPerson = provider.getPersonTotal(
+                                        person.id,
+                                      );
                                       return Container(
                                         margin: const EdgeInsets.only(
-                                            bottom: 10),
+                                          bottom: 10,
+                                        ),
                                         padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
                                           color: AppTheme.surface,
-                                          borderRadius:
-                                              BorderRadius.circular(18),
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
                                           border: Border.all(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.06),
+                                            color: Colors.white.withValues(
+                                              alpha: 0.06,
+                                            ),
                                           ),
                                         ),
                                         child: Row(
@@ -419,12 +441,10 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                                               backgroundColor:
                                                   person.avatarColor,
                                               child: Text(
-                                                person.name[0]
-                                                    .toUpperCase(),
+                                                person.name[0].toUpperCase(),
                                                 style: const TextStyle(
                                                   color: Colors.white,
-                                                  fontWeight:
-                                                      FontWeight.bold,
+                                                  fontWeight: FontWeight.bold,
                                                   fontSize: 16,
                                                 ),
                                               ),
@@ -434,21 +454,20 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                                               child: Text(
                                                 person.name,
                                                 style: const TextStyle(
-                                                  color:
-                                                      AppTheme.textPrimary,
+                                                  color: AppTheme.textPrimary,
                                                   fontSize: 16,
-                                                  fontWeight:
-                                                      FontWeight.w600,
+                                                  fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
                                             Text(
                                               '${perPerson.toStringAsFixed(0)} $currSymbol',
-                                              style: AppTheme.moneyStyle(
-                                                      fontSize: 18)
-                                                  .copyWith(
-                                                color: person.avatarColor,
-                                              ),
+                                              style:
+                                                  AppTheme.moneyStyle(
+                                                    fontSize: 18,
+                                                  ).copyWith(
+                                                    color: person.avatarColor,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -469,21 +488,19 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                                               child: const Center(
                                                 child: Row(
                                                   mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .center,
+                                                      MainAxisAlignment.center,
                                                   children: [
                                                     Icon(
-                                                        Icons
-                                                            .check_circle_rounded,
-                                                        size: 18,
-                                                        color: AppTheme
-                                                            .success),
+                                                      Icons
+                                                          .check_circle_rounded,
+                                                      size: 18,
+                                                      color: AppTheme.success,
+                                                    ),
                                                     SizedBox(width: 8),
                                                     Text(
                                                       'Сохранено',
                                                       style: TextStyle(
-                                                        color: AppTheme
-                                                            .success,
+                                                        color: AppTheme.success,
                                                         fontWeight:
                                                             FontWeight.w600,
                                                       ),
@@ -502,27 +519,27 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                                                       height: 18,
                                                       child:
                                                           CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color: AppTheme
-                                                            .primary,
-                                                      ),
+                                                            strokeWidth: 2,
+                                                            color: AppTheme
+                                                                .primary,
+                                                          ),
                                                     )
                                                   : const Icon(
                                                       Icons.save_rounded,
-                                                      size: 18),
-                                              label: Text(_saving
-                                                  ? 'Сохраняем...'
-                                                  : 'Сохранить'),
-                                              style:
-                                                  OutlinedButton.styleFrom(
+                                                      size: 18,
+                                                    ),
+                                              label: Text(
+                                                _saving
+                                                    ? 'Сохраняем...'
+                                                    : 'Сохранить',
+                                              ),
+                                              style: OutlinedButton.styleFrom(
                                                 side: const BorderSide(
-                                                    color:
-                                                        AppTheme.primary),
-                                                shape:
-                                                    RoundedRectangleBorder(
+                                                  color: AppTheme.primary,
+                                                ),
+                                                shape: RoundedRectangleBorder(
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          14),
+                                                      BorderRadius.circular(14),
                                                 ),
                                               ),
                                             ),
@@ -554,8 +571,9 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.primary
-                                      .withValues(alpha: 0.4),
+                                  color: AppTheme.primary.withValues(
+                                    alpha: 0.4,
+                                  ),
                                   blurRadius: 16,
                                   offset: const Offset(0, 6),
                                 ),
@@ -573,9 +591,11 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.flash_on_rounded,
-                                      size: 20,
-                                      color: Color(0xFF1A1A1A)),
+                                  Icon(
+                                    Icons.flash_on_rounded,
+                                    size: 20,
+                                    color: Color(0xFF1A1A1A),
+                                  ),
                                   SizedBox(width: 8),
                                   Text(
                                     'Разделить',
@@ -610,18 +630,21 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                                   ),
                                   padding: EdgeInsets.zero,
                                   child: const Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.send_rounded,
-                                          size: 16,
-                                          color: AppTheme.textSecondary),
+                                      Icon(
+                                        Icons.send_rounded,
+                                        size: 16,
+                                        color: AppTheme.textSecondary,
+                                      ),
                                       SizedBox(width: 6),
-                                      Text('Telegram',
-                                          style: TextStyle(
-                                              color:
-                                                  AppTheme.textSecondary,
-                                              fontSize: 14)),
+                                      Text(
+                                        'Telegram',
+                                        style: TextStyle(
+                                          color: AppTheme.textSecondary,
+                                          fontSize: 14,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -639,18 +662,21 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
                                   ),
                                   padding: EdgeInsets.zero,
                                   child: const Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.share_rounded,
-                                          size: 16,
-                                          color: AppTheme.textSecondary),
+                                      Icon(
+                                        Icons.share_rounded,
+                                        size: 16,
+                                        color: AppTheme.textSecondary,
+                                      ),
                                       SizedBox(width: 6),
-                                      Text('Поделиться',
-                                          style: TextStyle(
-                                              color:
-                                                  AppTheme.textSecondary,
-                                              fontSize: 14)),
+                                      Text(
+                                        'Поделиться',
+                                        style: TextStyle(
+                                          color: AppTheme.textSecondary,
+                                          fontSize: 14,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -676,8 +702,11 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          const Icon(Icons.receipt_rounded,
-              size: 18, color: AppTheme.textSecondary),
+          const Icon(
+            Icons.receipt_rounded,
+            size: 18,
+            color: AppTheme.textSecondary,
+          ),
           const SizedBox(width: 10),
           const Text(
             'Обслуживание',
@@ -693,7 +722,7 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
             final isActive = isZero
                 ? !provider.serviceChargeEnabled
                 : (provider.serviceChargeEnabled &&
-                    provider.serviceChargePercent == pct);
+                      provider.serviceChargePercent == pct);
             return GestureDetector(
               onTap: () {
                 if (isZero) {
@@ -707,8 +736,10 @@ class _QuickSplitScreenState extends State<QuickSplitScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.only(left: 6),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: isActive ? AppTheme.primary : AppTheme.surface,
                   borderRadius: BorderRadius.circular(10),

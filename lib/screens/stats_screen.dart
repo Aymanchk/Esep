@@ -87,8 +87,11 @@ class _StatsScreenState extends State<StatsScreen>
                           child: LiquidGlass(
                             borderRadius: BorderRadius.circular(12),
                             padding: const EdgeInsets.all(10),
-                            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                                size: 18, color: AppTheme.textPrimary),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -104,39 +107,42 @@ class _StatsScreenState extends State<StatsScreen>
                     child: auth.isGuest
                         ? _GuestPlaceholder()
                         : _isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: AppTheme.primary))
-                            : _stats == null
-                                ? const Center(
-                                    child: Text('Нет данных',
-                                        style: TextStyle(
-                                            color: AppTheme.textSecondary)))
-                                : RefreshIndicator(
-                                    onRefresh: _loadStats,
-                                    color: AppTheme.primary,
-                                    child: SingleChildScrollView(
-                                      physics:
-                                          const AlwaysScrollableScrollPhysics(),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(height: 8),
-                                          _buildSummaryCards(),
-                                          const SizedBox(height: 20),
-                                          _buildWeeklyChart(),
-                                          const SizedBox(height: 16),
-                                          _buildMonthlyChart(),
-                                          const SizedBox(height: 16),
-                                          _buildTopPeople(),
-                                          const SizedBox(height: 100),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.primary,
+                            ),
+                          )
+                        : _stats == null
+                        ? const Center(
+                            child: Text(
+                              'Нет данных',
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadStats,
+                            color: AppTheme.primary,
+                            child: SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  _buildSummaryCards(),
+                                  const SizedBox(height: 20),
+                                  _buildWeeklyChart(),
+                                  const SizedBox(height: 16),
+                                  _buildMonthlyChart(),
+                                  const SizedBox(height: 16),
+                                  _buildTopPeople(),
+                                  const SizedBox(height: 100),
+                                ],
+                              ),
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -158,8 +164,7 @@ class _StatsScreenState extends State<StatsScreen>
             builder: (_, __) => _GlassSummaryCard(
               icon: Icons.receipt_long_rounded,
               label: 'Счетов',
-              value: (totalBills * _countController.value)
-                  .toStringAsFixed(0),
+              value: (totalBills * _countController.value).toStringAsFixed(0),
               color: AppTheme.primary,
             ),
           ),
@@ -169,8 +174,7 @@ class _StatsScreenState extends State<StatsScreen>
           child: AnimatedBuilder(
             animation: _countController,
             builder: (_, __) {
-              final spent =
-                  (_stats!['total_spent'] as num?)?.toDouble() ?? 0;
+              final spent = (_stats!['total_spent'] as num?)?.toDouble() ?? 0;
               return _GlassSummaryCard(
                 icon: Icons.payments_rounded,
                 label: 'Потрачено',
@@ -186,17 +190,16 @@ class _StatsScreenState extends State<StatsScreen>
   }
 
   Widget _buildWeeklyChart() {
-    final weekly =
-        List<Map<String, dynamic>>.from(_stats?['weekly'] ?? []);
+    final weekly = List<Map<String, dynamic>>.from(_stats?['weekly'] ?? []);
     if (weekly.isEmpty) return const SizedBox.shrink();
 
     final reversed = weekly.reversed.toList();
     final maxY = reversed.fold<double>(
-        0,
-        (m, w) =>
-            (w['total'] as num).toDouble() > m
-                ? (w['total'] as num).toDouble()
-                : m);
+      0,
+      (m, w) => (w['total'] as num).toDouble() > m
+          ? (w['total'] as num).toDouble()
+          : m,
+    );
 
     return LiquidGlass(
       borderRadius: BorderRadius.circular(20),
@@ -204,11 +207,14 @@ class _StatsScreenState extends State<StatsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('По неделям',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
+          const Text(
+            'По неделям',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 20),
           SizedBox(
             height: 180,
@@ -222,17 +228,22 @@ class _StatsScreenState extends State<StatsScreen>
                     getTooltipItem: (_, __, rod, ___) => BarTooltipItem(
                       '${rod.toY.toStringAsFixed(0)} сом',
                       const TextStyle(
-                          color: AppTheme.textPrimary, fontSize: 12),
+                        color: AppTheme.textPrimary,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -243,13 +254,17 @@ class _StatsScreenState extends State<StatsScreen>
                         }
                         try {
                           final d = DateTime.parse(
-                              reversed[i]['week'].toString());
+                            reversed[i]['week'].toString(),
+                          );
                           return Padding(
                             padding: const EdgeInsets.only(top: 6),
-                            child: Text(DateFormat('d MMM').format(d),
-                                style: const TextStyle(
-                                    color: AppTheme.textSecondary,
-                                    fontSize: 9)),
+                            child: Text(
+                              DateFormat('d MMM').format(d),
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 9,
+                              ),
+                            ),
                           );
                         } catch (_) {
                           return const SizedBox.shrink();
@@ -261,8 +276,7 @@ class _StatsScreenState extends State<StatsScreen>
                 borderData: FlBorderData(show: false),
                 gridData: const FlGridData(show: false),
                 barGroups: List.generate(reversed.length, (i) {
-                  final total =
-                      (reversed[i]['total'] as num).toDouble();
+                  final total = (reversed[i]['total'] as num).toDouble();
                   return BarChartGroupData(
                     x: i,
                     barRods: [
@@ -275,7 +289,8 @@ class _StatsScreenState extends State<StatsScreen>
                         ),
                         width: 22,
                         borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(6)),
+                          top: Radius.circular(6),
+                        ),
                       ),
                     ],
                   );
@@ -289,17 +304,16 @@ class _StatsScreenState extends State<StatsScreen>
   }
 
   Widget _buildMonthlyChart() {
-    final monthly =
-        List<Map<String, dynamic>>.from(_stats?['monthly'] ?? []);
+    final monthly = List<Map<String, dynamic>>.from(_stats?['monthly'] ?? []);
     if (monthly.isEmpty) return const SizedBox.shrink();
 
     final reversed = monthly.reversed.toList();
     final maxY = reversed.fold<double>(
-        0,
-        (m, w) =>
-            (w['total'] as num).toDouble() > m
-                ? (w['total'] as num).toDouble()
-                : m);
+      0,
+      (m, w) => (w['total'] as num).toDouble() > m
+          ? (w['total'] as num).toDouble()
+          : m,
+    );
 
     return LiquidGlass(
       borderRadius: BorderRadius.circular(20),
@@ -307,11 +321,14 @@ class _StatsScreenState extends State<StatsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('По месяцам',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
+          const Text(
+            'По месяцам',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 20),
           SizedBox(
             height: 180,
@@ -323,22 +340,28 @@ class _StatsScreenState extends State<StatsScreen>
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (_) => AppTheme.surfaceLight,
                     getTooltipItems: (spots) => spots
-                        .map((s) => LineTooltipItem(
-                              '${s.y.toStringAsFixed(0)} сом',
-                              const TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 12),
-                            ))
+                        .map(
+                          (s) => LineTooltipItem(
+                            '${s.y.toStringAsFixed(0)} сом',
+                            const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        )
                         .toList(),
                   ),
                 ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -349,13 +372,17 @@ class _StatsScreenState extends State<StatsScreen>
                         }
                         try {
                           final d = DateTime.parse(
-                              reversed[i]['month'].toString());
+                            reversed[i]['month'].toString(),
+                          );
                           return Padding(
                             padding: const EdgeInsets.only(top: 6),
-                            child: Text(DateFormat('MMM').format(d),
-                                style: const TextStyle(
-                                    color: AppTheme.textSecondary,
-                                    fontSize: 10)),
+                            child: Text(
+                              DateFormat('MMM').format(d),
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 10,
+                              ),
+                            ),
                           );
                         } catch (_) {
                           return const SizedBox.shrink();
@@ -377,17 +404,19 @@ class _StatsScreenState extends State<StatsScreen>
                   LineChartBarData(
                     spots: List.generate(
                       reversed.length,
-                      (i) => FlSpot(i.toDouble(),
-                          (reversed[i]['total'] as num).toDouble()),
+                      (i) => FlSpot(
+                        i.toDouble(),
+                        (reversed[i]['total'] as num).toDouble(),
+                      ),
                     ),
                     isCurved: true,
                     gradient: const LinearGradient(
-                        colors: [AppTheme.primaryLight, AppTheme.primary]),
+                      colors: [AppTheme.primaryLight, AppTheme.primary],
+                    ),
                     barWidth: 3,
                     dotData: FlDotData(
                       show: true,
-                      getDotPainter: (_, __, ___, ____) =>
-                          FlDotCirclePainter(
+                      getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
                         radius: 4,
                         color: AppTheme.primaryLight,
                         strokeWidth: 2,
@@ -416,8 +445,7 @@ class _StatsScreenState extends State<StatsScreen>
   }
 
   Widget _buildTopPeople() {
-    final top =
-        List<Map<String, dynamic>>.from(_stats?['top_people'] ?? []);
+    final top = List<Map<String, dynamic>>.from(_stats?['top_people'] ?? []);
     if (top.isEmpty) return const SizedBox.shrink();
 
     return LiquidGlass(
@@ -426,11 +454,14 @@ class _StatsScreenState extends State<StatsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Чаще всего делите с',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
+          const Text(
+            'Чаще всего делите с',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 16),
           ...top.asMap().entries.map((entry) {
             final i = entry.key;
@@ -460,15 +491,19 @@ class _StatsScreenState extends State<StatsScreen>
                         child: Text(
                           name.isNotEmpty ? name[0].toUpperCase() : '?',
                           style: TextStyle(
-                              color: color, fontWeight: FontWeight.bold),
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       if (i == 0)
                         const Positioned(
                           top: -4,
                           right: -4,
-                          child: Text('\u{1F451}',
-                              style: TextStyle(fontSize: 12)),
+                          child: Text(
+                            '\u{1F451}',
+                            style: TextStyle(fontSize: 12),
+                          ),
                         ),
                     ],
                   ),
@@ -477,20 +512,21 @@ class _StatsScreenState extends State<StatsScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name,
-                            style: const TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500)),
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                         const SizedBox(height: 5),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: progress,
-                            backgroundColor:
-                                AppTheme.surface,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(color),
+                            backgroundColor: AppTheme.surface,
+                            valueColor: AlwaysStoppedAnimation<Color>(color),
                             minHeight: 5,
                           ),
                         ),
@@ -498,9 +534,13 @@ class _StatsScreenState extends State<StatsScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('$count раз',
-                      style: const TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 12)),
+                  Text(
+                    '$count раз',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -541,12 +581,12 @@ class _GlassSummaryCard extends StatelessWidget {
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 12),
-          Text(value,
-              style: AppTheme.moneyStyle(fontSize: 20)),
+          Text(value, style: AppTheme.moneyStyle(fontSize: 20)),
           const SizedBox(height: 2),
-          Text(label,
-              style: const TextStyle(
-                  color: AppTheme.textSecondary, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -562,15 +602,20 @@ class _GuestPlaceholder extends StatelessWidget {
         children: [
           Text('\u{1F4CA}', style: TextStyle(fontSize: 52)),
           SizedBox(height: 14),
-          Text('Войдите для просмотра',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            'Войдите для просмотра',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           SizedBox(height: 6),
-          Text('Статистика доступна\nтолько зарегистрированным',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(
+            'Статистика доступна\nтолько зарегистрированным',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
         ],
       ),
     );

@@ -67,8 +67,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) return;
     setState(() => _uploadingAvatar = false);
     if (ok && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Фото обновлено')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Фото обновлено')));
     }
   }
 
@@ -82,16 +83,19 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) return;
     if (ok) {
       setState(() => _isEditing = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Профиль обновлён')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Профиль обновлён')));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(auth.error ?? 'Ошибка')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(auth.error ?? 'Ошибка')));
     }
   }
 
-  void _logout() {
-    context.read<AuthProvider>().logout();
+  Future<void> _logout() async {
+    await context.read<AuthProvider>().logout();
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       (_) => false,
@@ -128,10 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: Column(
                   children: [
                     const SizedBox(height: 24),
-                    Text(
-                      'Профиль',
-                      style: AppTheme.headingStyle(fontSize: 28),
-                    ),
+                    Text('Профиль', style: AppTheme.headingStyle(fontSize: 28)),
                     const SizedBox(height: 28),
 
                     // ── Avatar with gradient ring ───────────────────
@@ -157,21 +158,24 @@ class _ProfileScreenState extends State<ProfileScreen>
                             backgroundColor: AppTheme.primary,
                             backgroundImage: auth.userAvatarUrl != null
                                 ? CachedNetworkImageProvider(
-                                    auth.userAvatarUrl!)
+                                    auth.userAvatarUrl!,
+                                  )
                                 : null,
                             child: _uploadingAvatar
                                 ? const CircularProgressIndicator(
-                                    color: Color(0xFF1A1A1A), strokeWidth: 2)
+                                    color: Color(0xFF1A1A1A),
+                                    strokeWidth: 2,
+                                  )
                                 : auth.userAvatarUrl == null
-                                    ? Text(
-                                        (auth.userName ?? 'G')[0].toUpperCase(),
-                                        style: const TextStyle(
-                                          fontSize: 38,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF1A1A1A),
-                                        ),
-                                      )
-                                    : null,
+                                ? Text(
+                                    (auth.userName ?? 'G')[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 38,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1A1A1A),
+                                    ),
+                                  )
+                                : null,
                           ),
                           if (!auth.isGuest)
                             Positioned(
@@ -183,10 +187,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   color: AppTheme.primary,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                      color: AppTheme.background, width: 2),
+                                    color: AppTheme.background,
+                                    width: 2,
+                                  ),
                                 ),
-                                child: const Icon(Icons.camera_alt_rounded,
-                                    size: 14, color: Color(0xFF1A1A1A)),
+                                child: const Icon(
+                                  Icons.camera_alt_rounded,
+                                  size: 14,
+                                  color: Color(0xFF1A1A1A),
+                                ),
                               ),
                             ),
                         ],
@@ -206,7 +215,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Text(
                         auth.userEmail ?? '',
                         style: const TextStyle(
-                            fontSize: 13, color: AppTheme.textSecondary),
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
 
                     const SizedBox(height: 20),
@@ -233,8 +244,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
-                            const Icon(Icons.person_rounded,
-                                size: 36, color: AppTheme.primary),
+                            const Icon(
+                              Icons.person_rounded,
+                              size: 36,
+                              color: AppTheme.primary,
+                            ),
                             const SizedBox(height: 10),
                             const Text(
                               'Вы вошли как гость',
@@ -249,8 +263,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                               'Зарегистрируйтесь, чтобы сохранять историю и общаться с друзьями',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 12),
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             SizedBox(
@@ -275,7 +290,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                             color: AppTheme.primary,
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                  builder: (_) => const StatsScreen()),
+                                builder: (_) => const StatsScreen(),
+                              ),
                             ),
                           ),
                           _MenuItem(
@@ -284,7 +300,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                             color: AppTheme.primary,
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                  builder: (_) => const GroupsScreen()),
+                                builder: (_) => const GroupsScreen(),
+                              ),
                             ),
                           ),
                           _MenuItemWithBadge(
@@ -295,9 +312,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                               context
                                   .read<NotificationProvider>()
                                   .loadNotifications();
-                              Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) =>
-                                      const NotificationsScreen()));
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationsScreen(),
+                                ),
+                              );
                             },
                           ),
                         ],
@@ -310,7 +329,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                           color: AppTheme.surface,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.06)),
+                            color: Colors.white.withValues(alpha: 0.06),
+                          ),
                         ),
                         padding: const EdgeInsets.all(20),
                         child: Column(
@@ -322,8 +342,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                               editing: _isEditing,
                             ),
                             Divider(
-                                height: 24,
-                                color: Colors.white.withValues(alpha: 0.06)),
+                              height: 24,
+                              color: Colors.white.withValues(alpha: 0.06),
+                            ),
                             _FieldRow(
                               icon: Icons.email_rounded,
                               label: 'Email',
@@ -332,8 +353,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                               kb: TextInputType.emailAddress,
                             ),
                             Divider(
-                                height: 24,
-                                color: Colors.white.withValues(alpha: 0.06)),
+                              height: 24,
+                              color: Colors.white.withValues(alpha: 0.06),
+                            ),
                             _FieldRow(
                               icon: Icons.phone_rounded,
                               label: 'Телефон',
@@ -369,15 +391,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                               child: SizedBox(
                                 height: 50,
                                 child: FilledButton(
-                                  onPressed:
-                                      auth.isLoading ? null : _saveProfile,
+                                  onPressed: auth.isLoading
+                                      ? null
+                                      : _saveProfile,
                                   child: auth.isLoading
                                       ? const SizedBox(
                                           width: 18,
                                           height: 18,
                                           child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white),
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
                                         )
                                       : const Text('Сохранить'),
                                 ),
@@ -397,14 +421,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: const [
-                                Icon(Icons.edit_rounded,
-                                    size: 16, color: AppTheme.textSecondary),
+                                Icon(
+                                  Icons.edit_rounded,
+                                  size: 16,
+                                  color: AppTheme.textSecondary,
+                                ),
                                 SizedBox(width: 8),
-                                Text('Редактировать профиль',
-                                    style: TextStyle(
-                                        color: AppTheme.textSecondary,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
+                                Text(
+                                  'Редактировать профиль',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -418,10 +448,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                         height: 50,
                         child: OutlinedButton.icon(
                           onPressed: _logout,
-                          icon: const Icon(Icons.logout_rounded,
-                              color: AppTheme.danger, size: 18),
-                          label: const Text('Выйти',
-                              style: TextStyle(color: AppTheme.danger)),
+                          icon: const Icon(
+                            Icons.logout_rounded,
+                            color: AppTheme.danger,
+                            size: 18,
+                          ),
+                          label: const Text(
+                            'Выйти',
+                            style: TextStyle(color: AppTheme.danger),
+                          ),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: AppTheme.danger),
                             shape: RoundedRectangleBorder(
@@ -457,14 +492,18 @@ class _StatPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       child: Column(
         children: [
-          Text(value,
-              style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15)),
-          Text(label,
-              style: const TextStyle(
-                  color: AppTheme.textSecondary, fontSize: 10)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+          ),
         ],
       ),
     );
@@ -487,8 +526,9 @@ class _MenuCard extends StatelessWidget {
         children: List.generate(items.length * 2 - 1, (i) {
           if (i.isOdd) {
             return Divider(
-                height: 1,
-                color: Colors.white.withValues(alpha: 0.06));
+              height: 1,
+              color: Colors.white.withValues(alpha: 0.06),
+            );
           }
           return items[i ~/ 2];
         }),
@@ -502,11 +542,12 @@ class _MenuItem extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  const _MenuItem(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -528,14 +569,20 @@ class _MenuItem extends StatelessWidget {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(label,
-                  style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500)),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppTheme.textSecondary, size: 18),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppTheme.textSecondary,
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -548,11 +595,12 @@ class _MenuItemWithBadge extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  const _MenuItemWithBadge(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
+  const _MenuItemWithBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -575,29 +623,40 @@ class _MenuItemWithBadge extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Text(label,
-                    style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500)),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
               if (np.unreadCount > 0)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.danger,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text('${np.unreadCount}',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold)),
+                  child: Text(
+                    '${np.unreadCount}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppTheme.textSecondary, size: 18),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppTheme.textSecondary,
+                size: 18,
+              ),
             ],
           ),
         ),
@@ -646,13 +705,21 @@ class _FieldRow extends StatelessWidget {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label,
-                        style: const TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 11)),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(ctrl.text.isEmpty ? '—' : ctrl.text,
-                        style: const TextStyle(
-                            color: AppTheme.textPrimary, fontSize: 15)),
+                    Text(
+                      ctrl.text.isEmpty ? '—' : ctrl.text,
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 15,
+                      ),
+                    ),
                   ],
                 ),
         ),

@@ -66,7 +66,9 @@ class OcrHelper {
       // Remove weight/volume/quantity suffix: "250г", "120мл", "5 шт", "1л", "375г"
       rawName = rawName
           .replaceAll(
-              RegExp(r'\s+\d+\s*(?:[гГgкКkмлМЛmlшт]+\.?|[лЛlL])\s*$'), '')
+            RegExp(r'\s+\d+\s*(?:[гГgкКkмлМЛmlшт]+\.?|[лЛlL])\s*$'),
+            '',
+          )
           .trim();
 
       final name = _cleanName(rawName);
@@ -75,8 +77,7 @@ class OcrHelper {
       // Look for =TOTAL on this line or next 1-3 lines
       double? total;
       for (int j = i; j < lines.length && j <= i + 3; j++) {
-        final totalMatch =
-            RegExp(r'[=≡]\s*(\d+[.,]?\d*)').firstMatch(lines[j]);
+        final totalMatch = RegExp(r'[=≡]\s*(\d+[.,]?\d*)').firstMatch(lines[j]);
         if (totalMatch != null) {
           total = _parsePrice(totalMatch.group(1)!);
           break;
@@ -112,8 +113,9 @@ class OcrHelper {
       if (price == null || price <= 0 || name.length < 2) continue;
 
       // Name must contain at least 2 letters (not just numbers/codes)
-      final alphaCount =
-          name.replaceAll(RegExp(r'[^a-zA-Zа-яА-ЯёЁ]'), '').length;
+      final alphaCount = name
+          .replaceAll(RegExp(r'[^a-zA-Zа-яА-ЯёЁ]'), '')
+          .length;
       if (alphaCount < 2) continue;
 
       items.add({'name': name, 'price': price});
@@ -123,8 +125,7 @@ class OcrHelper {
   }
 
   // --- Strategy 3: Single-line fallback ---
-  static List<Map<String, dynamic>> _parseSingleLineFormat(
-      List<String> lines) {
+  static List<Map<String, dynamic>> _parseSingleLineFormat(List<String> lines) {
     final items = <Map<String, dynamic>>[];
 
     for (final line in lines) {
@@ -150,8 +151,9 @@ class OcrHelper {
   static Map<String, dynamic>? _tryParseSingleLine(String line) {
     final cleaned = line
         .replaceAll(
-            RegExp(r'\s*(сом|som|kgs|тг|руб|₽|₸)\s*$', caseSensitive: false),
-            '')
+          RegExp(r'\s*(сом|som|kgs|тг|руб|₽|₸)\s*$', caseSensitive: false),
+          '',
+        )
         .trim();
 
     // Pattern 1: "Name  2x250" or "Name 2 x 250"
@@ -163,8 +165,9 @@ class OcrHelper {
       final qty = int.tryParse(qtyMatch.group(2)!) ?? 1;
       final unitPrice = _parsePrice(qtyMatch.group(3)!);
       if (unitPrice != null && unitPrice > 0 && name.length > 1) {
-        final alphaCount =
-            name.replaceAll(RegExp(r'[^a-zA-Zа-яА-ЯёЁ]'), '').length;
+        final alphaCount = name
+            .replaceAll(RegExp(r'[^a-zA-Zа-яА-ЯёЁ]'), '')
+            .length;
         if (alphaCount >= 2) {
           return {'name': name, 'price': unitPrice * qty};
         }
@@ -205,8 +208,9 @@ class OcrHelper {
       final name = _cleanName(basicMatch.group(1)!);
       final price = _parsePrice(basicMatch.group(2)!);
       if (price != null && price > 0 && name.length > 1) {
-        final alphaCount =
-            name.replaceAll(RegExp(r'[^a-zA-Zа-яА-ЯёЁ]'), '').length;
+        final alphaCount = name
+            .replaceAll(RegExp(r'[^a-zA-Zа-яА-ЯёЁ]'), '')
+            .length;
         if (alphaCount >= 2) {
           return {'name': name, 'price': price};
         }

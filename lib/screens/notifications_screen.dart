@@ -16,8 +16,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NotificationProvider>().loadNotifications();
+      _loadAndMarkRead();
     });
+  }
+
+  Future<void> _loadAndMarkRead() async {
+    final provider = context.read<NotificationProvider>();
+    await provider.loadNotifications();
+    if (!mounted) return;
+    await provider.markAllRead();
   }
 
   @override
@@ -57,8 +64,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           child: LiquidGlass(
                             borderRadius: BorderRadius.circular(12),
                             padding: const EdgeInsets.all(10),
-                            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                                size: 18, color: AppTheme.textPrimary),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -70,20 +80,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                         if (provider.unreadCount > 0)
                           LiquidGlass(
-                              borderRadius: BorderRadius.circular(50),
-                              interactive: true,
-                              onTap: () => provider.markAllRead(),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 7),
-                              child: const Text(
-                                'Прочитать все',
-                                style: TextStyle(
-                                  color: AppTheme.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            borderRadius: BorderRadius.circular(50),
+                            interactive: true,
+                            onTap: () => provider.markAllRead(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            child: const Text(
+                              'Прочитать все',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
+                          ),
                       ],
                     ),
                   ),
@@ -93,28 +105,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     child: provider.isLoading
                         ? const Center(
                             child: CircularProgressIndicator(
-                                color: AppTheme.primary))
+                              color: AppTheme.primary,
+                            ),
+                          )
                         : provider.notifications.isEmpty
-                            ? _EmptyState()
-                            : RefreshIndicator(
-                                onRefresh: () => provider.loadNotifications(),
-                                color: AppTheme.primary,
-                                child: ListView.builder(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
-                                  itemCount: provider.notifications.length,
-                                  itemBuilder: (_, i) {
-                                    final n = provider.notifications[i];
-                                    return _NotifCard(
-                                      notification: n,
-                                      onTap: () {
-                                        final id = n['id'] as int?;
-                                        if (id != null) provider.markRead(id);
-                                      },
-                                    );
-                                  },
-                                ),
+                        ? _EmptyState()
+                        : RefreshIndicator(
+                            onRefresh: () => provider.loadNotifications(),
+                            color: AppTheme.primary,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
                               ),
+                              itemCount: provider.notifications.length,
+                              itemBuilder: (_, i) {
+                                final n = provider.notifications[i];
+                                return _NotifCard(
+                                  notification: n,
+                                  onTap: () {
+                                    final id = n['id'] as int?;
+                                    if (id != null) provider.markRead(id);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -181,17 +196,13 @@ class _NotifCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isRead ? AppTheme.surface : AppTheme.surfaceLight,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.06),
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
         ),
         child: Container(
           decoration: BoxDecoration(
             border: Border(
               left: BorderSide(
-                color: isRead
-                    ? Colors.transparent
-                    : AppTheme.primary,
+                color: isRead ? Colors.transparent : AppTheme.primary,
                 width: 3,
               ),
             ),
@@ -218,15 +229,18 @@ class _NotifCard extends StatelessWidget {
                       style: TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 14,
-                        fontWeight:
-                            isRead ? FontWeight.normal : FontWeight.w600,
+                        fontWeight: isRead
+                            ? FontWeight.normal
+                            : FontWeight.w600,
                       ),
                     ),
                     if (body.isNotEmpty)
                       Text(
                         body,
                         style: const TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 12),
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -237,9 +251,13 @@ class _NotifCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(timeAgo,
-                      style: const TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 11)),
+                  Text(
+                    timeAgo,
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
                   if (!isRead) ...[
                     const SizedBox(height: 4),
                     Container(
@@ -270,15 +288,20 @@ class _EmptyState extends StatelessWidget {
         children: [
           Text('\u{1F514}', style: TextStyle(fontSize: 52)),
           SizedBox(height: 14),
-          Text('Нет уведомлений',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            'Нет уведомлений',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           SizedBox(height: 6),
-          Text('Здесь будут появляться\nновые события',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(
+            'Здесь будут появляться\nновые события',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
         ],
       ),
     );

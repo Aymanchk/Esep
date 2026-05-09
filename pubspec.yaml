@@ -1,4 +1,4 @@
-name: flutter_application_1
+name: fairsplitter
 description: "Fair Splitter — делите счёт честно"
 publish_to: 'none'
 version: 1.0.0+1
@@ -19,9 +19,10 @@ dependencies:
   cached_network_image: ^3.3.0
   web_socket_channel: ^2.4.0
   fl_chart: ^0.70.2
-  qr_flutter: ^4.1.0
   intl: ^0.20.2
   google_fonts: ^6.2.1
+  flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.3.5
 
 dev_dependencies:
   flutter_test:

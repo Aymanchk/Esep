@@ -31,9 +31,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: Stack(
           children: [
             Positioned(
@@ -55,10 +53,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            'Чаты',
-                            style: AppTheme.headingStyle(),
-                          ),
+                          child: Text('Чаты', style: AppTheme.headingStyle()),
                         ),
                         if (!auth.isGuest)
                           LiquidGlass(
@@ -66,8 +61,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             interactive: true,
                             onTap: () => _showNewChatSheet(context),
                             padding: const EdgeInsets.all(10),
-                            child: const Icon(Icons.edit_rounded,
-                                size: 20, color: AppTheme.primary),
+                            child: const Icon(
+                              Icons.edit_rounded,
+                              size: 20,
+                              color: AppTheme.primary,
+                            ),
                           ),
                       ],
                     ),
@@ -78,24 +76,27 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     child: auth.isGuest
                         ? _GuestPlaceholder()
                         : chat.isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: AppTheme.primary))
-                            : chat.rooms.isEmpty
-                                ? _EmptyPlaceholder()
-                                : RefreshIndicator(
-                                    color: AppTheme.primary,
-                                    onRefresh: () => chat.loadRooms(),
-                                    child: ListView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      itemCount: chat.rooms.length,
-                                      itemBuilder: (_, i) => _RoomTile(
-                                        room: chat.rooms[i],
-                                        currentUserId: auth.userId,
-                                      ),
-                                    ),
-                                  ),
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.primary,
+                            ),
+                          )
+                        : chat.rooms.isEmpty
+                        ? _EmptyPlaceholder()
+                        : RefreshIndicator(
+                            color: AppTheme.primary,
+                            onRefresh: () => chat.loadRooms(),
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: chat.rooms.length,
+                              itemBuilder: (_, i) => _RoomTile(
+                                room: chat.rooms[i],
+                                currentUserId: auth.userId,
+                              ),
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -134,11 +135,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Text('Новый чат',
-                  style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold)),
+              const Text(
+                'Новый чат',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: searchCtrl,
@@ -153,8 +157,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   }
                   set(() => searching = true);
                   try {
-                    final r =
-                        await context.read<AuthProvider>().api.searchUsers(q);
+                    final r = await context
+                        .read<AuthProvider>()
+                        .api
+                        .searchUsers(q);
                     set(() {
                       results = r;
                       searching = false;
@@ -168,8 +174,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               if (searching)
                 const Padding(
                   padding: EdgeInsets.all(12),
-                  child:
-                      CircularProgressIndicator(color: AppTheme.primary),
+                  child: CircularProgressIndicator(color: AppTheme.primary),
                 ),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 300),
@@ -182,27 +187,37 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     final avatarUrl = u['avatar'] as String?;
                     return ListTile(
                       leading: _Avatar(
-                          name: name, avatarUrl: avatarUrl, radius: 20),
-                      title: Text(name,
-                          style: const TextStyle(
-                              color: AppTheme.textPrimary)),
-                      subtitle: Text(u['email'] as String? ?? '',
-                          style: const TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 12)),
+                        name: name,
+                        avatarUrl: avatarUrl,
+                        radius: 20,
+                      ),
+                      title: Text(
+                        name,
+                        style: const TextStyle(color: AppTheme.textPrimary),
+                      ),
+                      subtitle: Text(
+                        u['email'] as String? ?? '',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
                       onTap: () async {
                         Navigator.pop(ctx);
                         final chatProv = context.read<ChatProvider>();
-                        final room =
-                            await chatProv.getOrCreateRoom(u['id'] as int);
+                        final room = await chatProv.getOrCreateRoom(
+                          u['id'] as int,
+                        );
                         if (context.mounted) {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => ChatScreen(
-                              roomId: room['id'] as int,
-                              otherUserName: name,
-                              otherAvatarUrl: avatarUrl,
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ChatScreen(
+                                roomId: room['id'] as int,
+                                otherUserName: name,
+                                otherAvatarUrl: avatarUrl,
+                              ),
                             ),
-                          ));
+                          );
                         }
                       },
                     );
@@ -224,8 +239,7 @@ class _RoomTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final parts =
-        List<Map<String, dynamic>>.from(room['participants'] ?? []);
+    final parts = List<Map<String, dynamic>>.from(room['participants'] ?? []);
     final other = parts.firstWhere(
       (p) => p['id'] != currentUserId,
       orElse: () => parts.isNotEmpty ? parts.first : {'name': '?'},
@@ -236,13 +250,15 @@ class _RoomTile extends StatelessWidget {
     final unread = room['unread_count'] as int? ?? 0;
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ChatScreen(
-          roomId: room['id'] as int,
-          otherUserName: name,
-          otherAvatarUrl: avatarUrl,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            roomId: room['id'] as int,
+            otherUserName: name,
+            otherAvatarUrl: avatarUrl,
+          ),
         ),
-      )),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
@@ -260,11 +276,14 @@ class _RoomTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name,
-                        style: const TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15)),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       lastMsg != null
@@ -285,16 +304,21 @@ class _RoomTile extends StatelessWidget {
               if (unread > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text('$unread',
-                      style: const TextStyle(
-                          color: Color(0xFF1A1A1A),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold)),
+                  child: Text(
+                    '$unread',
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -308,22 +332,25 @@ class _Avatar extends StatelessWidget {
   final String name;
   final String? avatarUrl;
   final double radius;
-  const _Avatar(
-      {required this.name, this.avatarUrl, required this.radius});
+  const _Avatar({required this.name, this.avatarUrl, required this.radius});
 
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: radius,
       backgroundColor: AppTheme.primary,
-      backgroundImage:
-          avatarUrl != null ? CachedNetworkImageProvider(avatarUrl!) : null,
+      backgroundImage: avatarUrl != null
+          ? CachedNetworkImageProvider(avatarUrl!)
+          : null,
       child: avatarUrl == null
-          ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+          ? Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
               style: TextStyle(
-                  color: const Color(0xFF1A1A1A),
-                  fontWeight: FontWeight.bold,
-                  fontSize: radius * 0.75))
+                color: const Color(0xFF1A1A1A),
+                fontWeight: FontWeight.bold,
+                fontSize: radius * 0.75,
+              ),
+            )
           : null,
     );
   }
@@ -338,14 +365,19 @@ class _GuestPlaceholder extends StatelessWidget {
         children: [
           Icon(Icons.chat_bubble_rounded, size: 52, color: AppTheme.primary),
           SizedBox(height: 14),
-          Text('Войдите в аккаунт',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            'Войдите в аккаунт',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           SizedBox(height: 6),
-          Text('Чтобы общаться с друзьями',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(
+            'Чтобы общаться с друзьями',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
         ],
       ),
     );
@@ -361,14 +393,19 @@ class _EmptyPlaceholder extends StatelessWidget {
         children: [
           Icon(Icons.forum_rounded, size: 52, color: AppTheme.primary),
           SizedBox(height: 14),
-          Text('Пока нет чатов',
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            'Пока нет чатов',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           SizedBox(height: 6),
-          Text('Нажмите кнопку чтобы начать',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(
+            'Нажмите кнопку чтобы начать',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
         ],
       ),
     );

@@ -63,9 +63,9 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
 
     if (success && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeShell()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
     }
   }
 
@@ -108,8 +108,11 @@ class _RegisterScreenState extends State<RegisterScreen>
                           animation: _floatAnim,
                           builder: (_, __) => Transform.translate(
                             offset: Offset(0, _floatAnim.value),
-                            child: const Icon(Icons.celebration_rounded,
-                                size: 52, color: AppTheme.primary),
+                            child: const Icon(
+                              Icons.celebration_rounded,
+                              size: 52,
+                              color: AppTheme.primary,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -118,9 +121,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                               AppTheme.primaryGradient.createShader(bounds),
                           child: Text(
                             'Создать аккаунт',
-                            style: AppTheme.headingStyle(fontSize: 30).copyWith(
-                              color: Colors.white,
-                            ),
+                            style: AppTheme.headingStyle(
+                              fontSize: 30,
+                            ).copyWith(color: Colors.white),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -142,10 +145,18 @@ class _RegisterScreenState extends State<RegisterScreen>
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.06),
                                 border: Border(
-                                  top: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
-                                  left: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-                                  right: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-                                  bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+                                  top: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                  ),
+                                  left: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                  ),
+                                  right: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.06),
+                                  ),
+                                  bottom: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.06),
+                                  ),
                                 ),
                               ),
                               child: Column(
@@ -157,10 +168,15 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       hintText: 'Ваше имя',
                                       prefixIcon: Icon(Icons.person_outline),
                                     ),
-                                    textCapitalization: TextCapitalization.words,
-                                    style: const TextStyle(color: AppTheme.textPrimary),
-                                    validator: (v) => (v == null || v.trim().isEmpty)
-                                        ? 'Введите имя' : null,
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                    validator: (v) =>
+                                        (v == null || v.trim().isEmpty)
+                                        ? 'Введите имя'
+                                        : null,
                                   ),
                                   const SizedBox(height: 14),
                                   TextFormField(
@@ -171,10 +187,14 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       prefixIcon: Icon(Icons.email_outlined),
                                     ),
                                     keyboardType: TextInputType.emailAddress,
-                                    style: const TextStyle(color: AppTheme.textPrimary),
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
                                     validator: (v) {
-                                      if (v == null || v.trim().isEmpty) return 'Введите email';
-                                      if (!v.contains('@')) return 'Неверный email';
+                                      if (v == null || v.trim().isEmpty)
+                                        return 'Введите email';
+                                      if (!v.contains('@'))
+                                        return 'Неверный email';
                                       return null;
                                     },
                                   ),
@@ -187,7 +207,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       prefixIcon: Icon(Icons.phone_outlined),
                                     ),
                                     keyboardType: TextInputType.phone,
-                                    style: const TextStyle(color: AppTheme.textPrimary),
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
                                   ),
                                   const SizedBox(height: 14),
                                   TextFormField(
@@ -195,20 +217,30 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     decoration: InputDecoration(
                                       labelText: 'Пароль',
                                       hintText: 'Минимум 6 символов',
-                                      prefixIcon: const Icon(Icons.lock_outline),
+                                      prefixIcon: const Icon(
+                                        Icons.lock_outline,
+                                      ),
                                       suffixIcon: IconButton(
-                                        icon: Icon(_obscurePassword
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined),
-                                        onPressed: () => setState(() =>
-                                            _obscurePassword = !_obscurePassword),
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_off_outlined
+                                              : Icons.visibility_outlined,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
                                       ),
                                     ),
                                     obscureText: _obscurePassword,
-                                    style: const TextStyle(color: AppTheme.textPrimary),
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
                                     validator: (v) {
-                                      if (v == null || v.isEmpty) return 'Введите пароль';
-                                      if (v.length < 6) return 'Минимум 6 символов';
+                                      if (v == null || v.isEmpty)
+                                        return 'Введите пароль';
+                                      if (v.length < 6)
+                                        return 'Минимум 6 символов';
                                       return null;
                                     },
                                   ),
@@ -218,19 +250,28 @@ class _RegisterScreenState extends State<RegisterScreen>
                                     decoration: InputDecoration(
                                       labelText: 'Подтвердите пароль',
                                       hintText: 'Повторите пароль',
-                                      prefixIcon: const Icon(Icons.lock_outline),
+                                      prefixIcon: const Icon(
+                                        Icons.lock_outline,
+                                      ),
                                       suffixIcon: IconButton(
-                                        icon: Icon(_obscureConfirm
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined),
-                                        onPressed: () => setState(() =>
-                                            _obscureConfirm = !_obscureConfirm),
+                                        icon: Icon(
+                                          _obscureConfirm
+                                              ? Icons.visibility_off_outlined
+                                              : Icons.visibility_outlined,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _obscureConfirm =
+                                              !_obscureConfirm,
+                                        ),
                                       ),
                                     ),
                                     obscureText: _obscureConfirm,
-                                    style: const TextStyle(color: AppTheme.textPrimary),
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
                                     validator: (v) {
-                                      if (v != _passwordController.text) return 'Пароли не совпадают';
+                                      if (v != _passwordController.text)
+                                        return 'Пароли не совпадают';
                                       return null;
                                     },
                                   ),
@@ -239,7 +280,10 @@ class _RegisterScreenState extends State<RegisterScreen>
                                       padding: const EdgeInsets.only(top: 10),
                                       child: Text(
                                         auth.error!,
-                                        style: const TextStyle(color: AppTheme.danger, fontSize: 13),
+                                        style: const TextStyle(
+                                          color: AppTheme.danger,
+                                          fontSize: 13,
+                                        ),
                                       ),
                                     ),
                                 ],
@@ -259,7 +303,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.primary.withValues(alpha: 0.45),
+                                  color: AppTheme.primary.withValues(
+                                    alpha: 0.45,
+                                  ),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -268,22 +314,31 @@ class _RegisterScreenState extends State<RegisterScreen>
                             child: Center(
                               child: auth.isLoading
                                   ? const SizedBox(
-                                      width: 22, height: 22,
+                                      width: 22,
+                                      height: 22,
                                       child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Color(0xFF1A1A1A)),
+                                        strokeWidth: 2,
+                                        color: Color(0xFF1A1A1A),
+                                      ),
                                     )
                                   : const Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Text('Зарегистрироваться',
-                                            style: TextStyle(
-                                              color: Color(0xFF1A1A1A),
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w700,
-                                            )),
+                                        Text(
+                                          'Зарегистрироваться',
+                                          style: TextStyle(
+                                            color: Color(0xFF1A1A1A),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                         SizedBox(width: 8),
-                                        Icon(Icons.arrow_forward_rounded,
-                                            color: Color(0xFF1A1A1A), size: 18),
+                                        Icon(
+                                          Icons.arrow_forward_rounded,
+                                          color: Color(0xFF1A1A1A),
+                                          size: 18,
+                                        ),
                                       ],
                                     ),
                             ),
@@ -294,20 +349,26 @@ class _RegisterScreenState extends State<RegisterScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('Уже есть аккаунт? ',
-                                style: TextStyle(color: AppTheme.textSecondary)),
+                            const Text(
+                              'Уже есть аккаунт? ',
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
                             GestureDetector(
                               onTap: () {
                                 auth.clearError();
                                 Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginScreen(),
+                                  ),
                                 );
                               },
-                              child: const Text('Войти',
-                                  style: TextStyle(
-                                    color: AppTheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  )),
+                              child: const Text(
+                                'Войти',
+                                style: TextStyle(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ],
                         ),

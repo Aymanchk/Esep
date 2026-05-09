@@ -4,6 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../services/api_service.dart';
 
+enum ChatConnectionState {
+  disconnected,
+  connecting,
+  connected,
+  reconnecting,
+}
+
 class ChatProvider extends ChangeNotifier {
   final ApiService _api;
 
@@ -12,11 +19,19 @@ class ChatProvider extends ChangeNotifier {
   bool _isLoading = false;
   WebSocketChannel? _wsChannel;
   StreamSubscription? _wsSubscription;
+  Timer? _reconnectTimer;
+  int? _activeRoomId;
+  int _reconnectAttempt = 0;
+  int _connectionGeneration = 0;
+  bool _intentionalDisconnect = false;
+  ChatConnectionState _connectionState = ChatConnectionState.disconnected;
 
   ChatProvider(this._api);
 
   List<Map<String, dynamic>> get rooms => _rooms;
   bool get isLoading => _isLoading;
+  ChatConnectionState get connectionState => _connectionState;
+  bool get isConnected => _connectionState == ChatConnectionState.connected;
 
   List<Map<String, dynamic>> getMessages(int roomId) {
     return _messagesByRoom[roomId] ?? [];
@@ -72,12 +87,38 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void connectToRoom(int roomId) {
-    disconnectFromRoom();
+    if (_activeRoomId == roomId &&
+        (_connectionState == ChatConnectionState.connecting ||
+            _connectionState == ChatConnectionState.connected ||
+            _connectionState == ChatConnectionState.reconnecting)) {
+      return;
+    }
 
-    // Reuse the same host the REST client resolved (LAN IP on real device,
-    // 10.0.2.2 on Android emulator, localhost on iOS sim / desktop).
-    final wsBase = 'ws://${ApiService.host}:${ApiService.port}';
+    _closeSocket();
+    _reconnectTimer?.cancel();
+    _intentionalDisconnect = false;
+    _activeRoomId = roomId;
+    _reconnectAttempt = 0;
+    _openSocket(roomId, reconnecting: false);
+  }
+
+  void _openSocket(int roomId, {required bool reconnecting}) {
     final token = _api.token;
+    if (token == null || token.isEmpty || _intentionalDisconnect) {
+      _setConnectionState(ChatConnectionState.disconnected);
+      return;
+    }
+
+    _closeSocket();
+    final generation = ++_connectionGeneration;
+    _setConnectionState(
+      reconnecting
+          ? ChatConnectionState.reconnecting
+          : ChatConnectionState.connecting,
+    );
+
+    // Reuse the same host the REST client resolved.
+    final wsBase = 'ws://${ApiService.host}:${ApiService.port}';
 
     _wsChannel = WebSocketChannel.connect(
       Uri.parse('$wsBase/ws/chat/$roomId/?token=$token'),
@@ -85,25 +126,76 @@ class ChatProvider extends ChangeNotifier {
 
     _wsSubscription = _wsChannel!.stream.listen(
       (data) {
+        if (generation != _connectionGeneration) return;
+        _reconnectAttempt = 0;
+        _setConnectionState(ChatConnectionState.connected);
         final message = jsonDecode(data as String) as Map<String, dynamic>;
         _messagesByRoom.putIfAbsent(roomId, () => []);
         // Avoid duplicates
-        final exists = _messagesByRoom[roomId]!.any((m) => m['id'] == message['id']);
+        final exists = _messagesByRoom[roomId]!.any(
+          (m) => m['id'] == message['id'],
+        );
         if (!exists) {
           _messagesByRoom[roomId]!.add(message);
           notifyListeners();
         }
       },
-      onError: (_) {},
-      onDone: () {},
+      onError: (_) => _handleSocketClosed(roomId, generation),
+      onDone: () => _handleSocketClosed(roomId, generation),
+      cancelOnError: true,
     );
+    _setConnectionState(ChatConnectionState.connected);
   }
 
   void disconnectFromRoom() {
+    _intentionalDisconnect = true;
+    _activeRoomId = null;
+    _reconnectAttempt = 0;
+    _reconnectTimer?.cancel();
+    _closeSocket();
+    _setConnectionState(ChatConnectionState.disconnected);
+  }
+
+  void _handleSocketClosed(int roomId, int generation) {
+    if (generation != _connectionGeneration ||
+        _intentionalDisconnect ||
+        _activeRoomId != roomId ||
+        _api.token == null) {
+      return;
+    }
+    _scheduleReconnect(roomId);
+  }
+
+  void _scheduleReconnect(int roomId) {
+    if (_reconnectTimer?.isActive ?? false) return;
+    _closeSocket();
+    _setConnectionState(ChatConnectionState.reconnecting);
+
+    final seconds = _backoffSeconds(_reconnectAttempt);
+    _reconnectAttempt++;
+    _reconnectTimer = Timer(Duration(seconds: seconds), () {
+      if (_intentionalDisconnect || _activeRoomId != roomId) return;
+      _openSocket(roomId, reconnecting: true);
+    });
+  }
+
+  int _backoffSeconds(int attempt) {
+    final seconds = 1 << attempt;
+    return seconds > 30 ? 30 : seconds;
+  }
+
+  void _closeSocket() {
+    _connectionGeneration++;
     _wsSubscription?.cancel();
     _wsChannel?.sink.close();
     _wsChannel = null;
     _wsSubscription = null;
+  }
+
+  void _setConnectionState(ChatConnectionState state) {
+    if (_connectionState == state) return;
+    _connectionState = state;
+    notifyListeners();
   }
 
   Future<void> markAsRead(int roomId) async {

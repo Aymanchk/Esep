@@ -5,13 +5,17 @@ class DebtProvider extends ChangeNotifier {
   final ApiService _api;
   List<Map<String, dynamic>> _debts = [];
   List<Map<String, dynamic>> _balances = [];
+  List<Map<String, dynamic>> _settlements = [];
   bool _isLoading = false;
+  bool _isSettlementLoading = false;
 
   DebtProvider(this._api);
 
   List<Map<String, dynamic>> get debts => _debts;
   List<Map<String, dynamic>> get balances => _balances;
+  List<Map<String, dynamic>> get settlements => _settlements;
   bool get isLoading => _isLoading;
+  bool get isSettlementLoading => _isSettlementLoading;
 
   Future<void> loadDebts({String show = 'active'}) async {
     _isLoading = true;
@@ -32,6 +36,21 @@ class DebtProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> loadSettlementPlan() async {
+    _isSettlementLoading = true;
+    notifyListeners();
+    try {
+      final result = await _api.getDebtSettlementPlan();
+      _settlements = List<Map<String, dynamic>>.from(
+        result['settlements'] ?? [],
+      );
+    } catch (_) {
+      _settlements = [];
+    }
+    _isSettlementLoading = false;
+    notifyListeners();
+  }
+
   Future<bool> createDebt({
     required int fromUserId,
     required int toUserId,
@@ -49,6 +68,7 @@ class DebtProvider extends ChangeNotifier {
       );
       await loadDebts();
       await loadSummary();
+      await loadSettlementPlan();
       return true;
     } catch (_) {
       return false;
@@ -60,6 +80,7 @@ class DebtProvider extends ChangeNotifier {
       await _api.markDebtPaid(debtId);
       await loadDebts();
       await loadSummary();
+      await loadSettlementPlan();
       return true;
     } catch (_) {
       return false;

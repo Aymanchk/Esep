@@ -78,21 +78,25 @@ class _SplitScreenState extends State<SplitScreen>
                 decoration: InputDecoration(
                   hintText: isKg ? 'Цена за 1 кг' : 'Цена за 1 шт.',
                 ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+                  FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
                 ],
               ),
               if (isKg) ...[
                 const SizedBox(height: 12),
                 TextField(
                   controller: weightCtrl,
-                  decoration: const InputDecoration(hintText: 'Вес (кг), напр. 0.5'),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    hintText: 'Вес (кг), напр. 0.5',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
                   ],
                 ),
               ],
@@ -106,22 +110,25 @@ class _SplitScreenState extends State<SplitScreen>
             FilledButton(
               onPressed: () {
                 final name = nameCtrl.text.trim();
-                final pricePerUnit =
-                    double.tryParse(priceCtrl.text.replaceAll(',', '.'));
+                final pricePerUnit = double.tryParse(
+                  priceCtrl.text.replaceAll(',', '.'),
+                );
                 if (name.isEmpty || pricePerUnit == null || pricePerUnit <= 0) {
                   return;
                 }
                 if (isKg) {
-                  final weight =
-                      double.tryParse(weightCtrl.text.replaceAll(',', '.'));
+                  final weight = double.tryParse(
+                    weightCtrl.text.replaceAll(',', '.'),
+                  );
                   if (weight == null || weight <= 0) return;
-                  final totalPrice = (pricePerUnit * weight * 100).round() / 100;
+                  final totalPrice =
+                      (pricePerUnit * weight * 100).round() / 100;
                   context.read<BillProvider>().addItem(
-                        name,
-                        totalPrice,
-                        isWeightBased: true,
-                        weightKg: weight,
-                      );
+                    name,
+                    totalPrice,
+                    isWeightBased: true,
+                    weightKg: weight,
+                  );
                 } else {
                   context.read<BillProvider>().addItem(name, pricePerUnit);
                 }
@@ -193,16 +200,18 @@ class _SplitScreenState extends State<SplitScreen>
                   title: Text(
                     c.code,
                     style: TextStyle(
-                      color: isActive
-                          ? AppTheme.primary
-                          : AppTheme.textPrimary,
-                      fontWeight:
-                          isActive ? FontWeight.w600 : FontWeight.normal,
+                      color: isActive ? AppTheme.primary : AppTheme.textPrimary,
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                   trailing: isActive
-                      ? const Icon(Icons.check_rounded,
-                          color: AppTheme.primary, size: 20)
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: AppTheme.primary,
+                          size: 20,
+                        )
                       : null,
                   onTap: () {
                     provider.setCurrency(c);
@@ -272,7 +281,8 @@ class _SplitScreenState extends State<SplitScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                  'Не удалось распознать. Попробуйте при хорошем освещении.'),
+                'Не удалось распознать. Попробуйте при хорошем освещении.',
+              ),
               duration: Duration(seconds: 4),
             ),
           );
@@ -287,8 +297,9 @@ class _SplitScreenState extends State<SplitScreen>
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
       }
     }
   }
@@ -297,15 +308,13 @@ class _SplitScreenState extends State<SplitScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: Stack(
           children: [
             Positioned(
-              top: -40,
-              right: -30,
-              child: _Blob(color: const Color(0xFF22D3EE), size: 160),
+              top: -70,
+              right: -70,
+              child: _Blob(color: const Color(0xFF22D3EE), size: 130),
             ),
             SafeArea(
               child: Consumer<BillProvider>(
@@ -314,7 +323,10 @@ class _SplitScreenState extends State<SplitScreen>
                   // shares > quantity contribute 0 (over-allocated). Items
                   // with shares < quantity contribute the leftover units'
                   // worth. Items with no shares contribute their full cost.
-                  final unassignedTotal = provider.items.fold<double>(0, (s, i) {
+                  final unassignedTotal = provider.items.fold<double>(0, (
+                    s,
+                    i,
+                  ) {
                     final remaining = provider.getRemainingUnits(i.id);
                     return remaining > 0 ? s + i.price * remaining : s;
                   });
@@ -332,9 +344,10 @@ class _SplitScreenState extends State<SplitScreen>
                                 borderRadius: BorderRadius.circular(12),
                                 padding: const EdgeInsets.all(10),
                                 child: const Icon(
-                                    Icons.arrow_back_ios_new_rounded,
-                                    size: 18,
-                                    color: AppTheme.textPrimary),
+                                  Icons.arrow_back_ios_new_rounded,
+                                  size: 18,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -352,18 +365,23 @@ class _SplitScreenState extends State<SplitScreen>
                             // Category badge
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: provider.category.color
-                                    .withValues(alpha: 0.15),
+                                color: provider.category.color.withValues(
+                                  alpha: 0.15,
+                                ),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(provider.category.icon,
-                                      size: 13,
-                                      color: provider.category.color),
+                                  Icon(
+                                    provider.category.icon,
+                                    size: 13,
+                                    color: provider.category.color,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     provider.category.name,
@@ -396,7 +414,9 @@ class _SplitScreenState extends State<SplitScreen>
                                 duration: const Duration(milliseconds: 200),
                                 margin: const EdgeInsets.only(right: 8),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: isActive
                                       ? AppTheme.primary
@@ -405,8 +425,7 @@ class _SplitScreenState extends State<SplitScreen>
                                   border: Border.all(
                                     color: isActive
                                         ? AppTheme.primary
-                                        : Colors.white
-                                            .withValues(alpha: 0.08),
+                                        : Colors.white.withValues(alpha: 0.08),
                                   ),
                                 ),
                                 child: Text(
@@ -436,7 +455,9 @@ class _SplitScreenState extends State<SplitScreen>
                           child: LiquidGlass(
                             borderRadius: BorderRadius.circular(50),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
                             child: Column(
                               children: [
                                 Row(
@@ -449,11 +470,12 @@ class _SplitScreenState extends State<SplitScreen>
                                     const SizedBox(width: 6),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: AppTheme.surfaceLight,
-                                        borderRadius:
-                                            BorderRadius.circular(6),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         provider.currency.code,
@@ -484,8 +506,7 @@ class _SplitScreenState extends State<SplitScreen>
 
                       Expanded(
                         child: SingleChildScrollView(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -532,12 +553,14 @@ class _SplitScreenState extends State<SplitScreen>
                                   if (provider.unassignedItems.isNotEmpty)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.accent
-                                            .withValues(alpha: 0.15),
-                                        borderRadius:
-                                            BorderRadius.circular(20),
+                                        color: AppTheme.accent.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
                                         '${provider.unassignedItems.length} не распределено',
@@ -556,8 +579,9 @@ class _SplitScreenState extends State<SplitScreen>
                                 _EmptyItemsState()
                               else
                                 ...provider.items.map((item) {
-                                  final assigned =
-                                      provider.getPeopleForItem(item.id);
+                                  final assigned = provider.getPeopleForItem(
+                                    item.id,
+                                  );
                                   return _ItemTile(
                                     item: item,
                                     assignedPeople: assigned,
@@ -588,7 +612,9 @@ class _SplitScreenState extends State<SplitScreen>
                                     child: LiquidGlass(
                                       borderRadius: BorderRadius.circular(50),
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 20, vertical: 10),
+                                        horizontal: 20,
+                                        vertical: 10,
+                                      ),
                                       child: Text(
                                         'Осталось: ${unassignedTotal.toStringAsFixed(0)} ${provider.currency.symbol}',
                                         style: const TextStyle(
@@ -600,15 +626,19 @@ class _SplitScreenState extends State<SplitScreen>
                                     ),
                                   ),
                                 ],
-                              ] else if (provider.splitMode == SplitMode.equal) ...[
+                              ] else if (provider.splitMode ==
+                                  SplitMode.equal) ...[
                                 // ── Equal split ───────────────────────
-                                if (provider.people.isNotEmpty && provider.items.isNotEmpty)
+                                if (provider.people.isNotEmpty &&
+                                    provider.items.isNotEmpty)
                                   _EqualSplitPreview(provider: provider),
-                              ] else if (provider.splitMode == SplitMode.percentage) ...[
+                              ] else if (provider.splitMode ==
+                                  SplitMode.percentage) ...[
                                 // ── Percentage split ──────────────────
                                 if (provider.people.isNotEmpty)
                                   _PercentageSplitEditor(provider: provider),
-                              ] else if (provider.splitMode == SplitMode.shares) ...[
+                              ] else if (provider.splitMode ==
+                                  SplitMode.shares) ...[
                                 // ── Shares split ──────────────────────
                                 if (provider.people.isNotEmpty)
                                   _SharesSplitEditor(provider: provider),
@@ -622,12 +652,14 @@ class _SplitScreenState extends State<SplitScreen>
 
                       // ── Bottom button ────────────────────────────────
                       _BottomBar(
-                        enabled: provider.items.isNotEmpty &&
+                        enabled:
+                            provider.items.isNotEmpty &&
                             (provider.splitMode != SplitMode.byItems ||
                                 provider.unassignedItems.isEmpty),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                              builder: (_) => const SummaryScreen()),
+                            builder: (_) => const SummaryScreen(),
+                          ),
                         ),
                       ),
                     ],
@@ -648,8 +680,11 @@ class _SplitScreenState extends State<SplitScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          const Icon(Icons.receipt_rounded,
-              size: 18, color: AppTheme.textSecondary),
+          const Icon(
+            Icons.receipt_rounded,
+            size: 18,
+            color: AppTheme.textSecondary,
+          ),
           const SizedBox(width: 10),
           const Text(
             'Обслуживание',
@@ -665,7 +700,7 @@ class _SplitScreenState extends State<SplitScreen>
             final isActive = isZero
                 ? !provider.serviceChargeEnabled
                 : (provider.serviceChargeEnabled &&
-                    provider.serviceChargePercent == pct);
+                      provider.serviceChargePercent == pct);
             return GestureDetector(
               onTap: () {
                 if (isZero) {
@@ -680,11 +715,11 @@ class _SplitScreenState extends State<SplitScreen>
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.only(left: 6),
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 7),
+                  horizontal: 12,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
-                  color: isActive
-                      ? AppTheme.primary
-                      : AppTheme.surface,
+                  color: isActive ? AppTheme.primary : AppTheme.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isActive
@@ -732,23 +767,31 @@ class _ItemTile extends StatelessWidget {
       data: item,
       feedback: Material(
         color: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.5),
-                blurRadius: 16,
-                spreadRadius: 2,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 200),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.5),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Text(
+              '${item.name}  ×1  ${item.price.toStringAsFixed(0)} ${provider.currency.symbol}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: const TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontWeight: FontWeight.w600,
               ),
-            ],
-          ),
-          child: Text(
-            '${item.name}  ×1  ${item.price.toStringAsFixed(0)} ${provider.currency.symbol}',
-            style: const TextStyle(
-                color: Color(0xFF1A1A1A), fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),
@@ -762,7 +805,8 @@ class _ItemTile extends StatelessWidget {
     final totalAssigned = provider.getTotalAssignedUnits(item.id);
     final isShared = totalAssigned > item.quantity;
     final isFullyAssigned = totalAssigned == item.quantity;
-    final isPartiallyAssigned = totalAssigned > 0 && totalAssigned < item.quantity;
+    final isPartiallyAssigned =
+        totalAssigned > 0 && totalAssigned < item.quantity;
 
     Color bgColor = AppTheme.surface;
     Color borderColor = Colors.white.withValues(alpha: 0.06);
@@ -792,8 +836,7 @@ class _ItemTile extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: assignedPeople.take(4).map((pid) {
-                final person =
-                    provider.people.firstWhere((p) => p.id == pid);
+                final person = provider.people.firstWhere((p) => p.id == pid);
                 final unitCount = provider.getPersonUnitCount(item.id, pid);
                 return GestureDetector(
                   onTap: () => provider.unassignOneUnit(item.id, pid),
@@ -808,15 +851,18 @@ class _ItemTile extends StatelessWidget {
                           color: person.avatarColor,
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: AppTheme.background, width: 1.5),
+                            color: AppTheme.background,
+                            width: 1.5,
+                          ),
                         ),
                         child: Center(
                           child: Text(
                             person.name[0].toUpperCase(),
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold),
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -831,15 +877,18 @@ class _ItemTile extends StatelessWidget {
                               color: AppTheme.accent,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color: AppTheme.background, width: 1),
+                                color: AppTheme.background,
+                                width: 1,
+                              ),
                             ),
                             child: Center(
                               child: Text(
                                 '$unitCount',
                                 style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 7,
-                                    fontWeight: FontWeight.bold),
+                                  color: Colors.white,
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -873,7 +922,9 @@ class _ItemTile extends StatelessWidget {
                       ? '${(item.price / item.weightKg).toStringAsFixed(0)} сом/кг × ${item.weightKg} кг = ${item.totalPrice.toStringAsFixed(0)} ${provider.currency.symbol}'
                       : '${item.price.toStringAsFixed(0)} × ${item.quantity} = ${item.totalPrice.toStringAsFixed(0)} ${provider.currency.symbol}',
                   style: const TextStyle(
-                      color: AppTheme.textSecondary, fontSize: 11),
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -883,8 +934,7 @@ class _ItemTile extends StatelessWidget {
           if (isShared)
             Container(
               margin: const EdgeInsets.only(right: 6),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: AppTheme.primary.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(8),
@@ -901,15 +951,16 @@ class _ItemTile extends StatelessWidget {
           else if (isFullyAssigned)
             Padding(
               padding: const EdgeInsets.only(right: 6),
-              child: Icon(Icons.check_circle_rounded,
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.8),
-                  size: 16),
+              child: Icon(
+                Icons.check_circle_rounded,
+                color: const Color(0xFF22C55E).withValues(alpha: 0.8),
+                size: 16,
+              ),
             )
           else if (isPartiallyAssigned)
             Container(
               margin: const EdgeInsets.only(right: 6),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: AppTheme.accent.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
@@ -933,7 +984,9 @@ class _ItemTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Text(
                   '${item.weightKg} кг',
@@ -946,61 +999,68 @@ class _ItemTile extends StatelessWidget {
               ),
             )
           else
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTap: item.quantity > 1
-                    ? () => provider.setItemQuantity(
-                        item.id, item.quantity - 1)
-                    : null,
-                child: Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1)),
-                  ),
-                  child: Icon(Icons.remove_rounded,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: item.quantity > 1
+                      ? () =>
+                            provider.setItemQuantity(item.id, item.quantity - 1)
+                      : null,
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.remove_rounded,
                       size: 14,
                       color: item.quantity > 1
                           ? AppTheme.textSecondary
-                          : AppTheme.textSecondary.withValues(alpha: 0.25)),
-                ),
-              ),
-              SizedBox(
-                width: 28,
-                child: Center(
-                  child: Text(
-                    '${item.quantity}',
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+                          : AppTheme.textSecondary.withValues(alpha: 0.25),
                     ),
                   ),
                 ),
-              ),
-              GestureDetector(
-                onTap: () =>
-                    provider.setItemQuantity(item.id, item.quantity + 1),
-                child: Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.25)),
+                SizedBox(
+                  width: 28,
+                  child: Center(
+                    child: Text(
+                      '${item.quantity}',
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  child: const Icon(Icons.add_rounded,
-                      size: 14, color: AppTheme.primary),
                 ),
-              ),
-            ],
-          ),
+                GestureDetector(
+                  onTap: () =>
+                      provider.setItemQuantity(item.id, item.quantity + 1),
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      size: 14,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(width: 8),
 
           // Delete
@@ -1018,12 +1078,15 @@ class _ItemTile extends StatelessWidget {
   }
 
   void _showEditWeightDialog(
-      BuildContext context, BillItem item, BillProvider provider) {
+    BuildContext context,
+    BillItem item,
+    BillProvider provider,
+  ) {
     final pricePerKg = item.weightKg > 0 ? item.price / item.weightKg : 0.0;
-    final weightCtrl =
-        TextEditingController(text: item.weightKg.toString());
-    final priceCtrl =
-        TextEditingController(text: pricePerKg.toStringAsFixed(0));
+    final weightCtrl = TextEditingController(text: item.weightKg.toString());
+    final priceCtrl = TextEditingController(
+      text: pricePerKg.toStringAsFixed(0),
+    );
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1034,21 +1097,23 @@ class _ItemTile extends StatelessWidget {
             TextField(
               controller: priceCtrl,
               decoration: const InputDecoration(hintText: 'Цена за 1 кг'),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
               ],
             ),
             const SizedBox(height: 12),
             TextField(
               controller: weightCtrl,
               decoration: const InputDecoration(hintText: 'Вес (кг)'),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               autofocus: true,
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))
+                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
               ],
             ),
           ],
@@ -1060,10 +1125,8 @@ class _ItemTile extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
-              final w =
-                  double.tryParse(weightCtrl.text.replaceAll(',', '.'));
-              final p =
-                  double.tryParse(priceCtrl.text.replaceAll(',', '.'));
+              final w = double.tryParse(weightCtrl.text.replaceAll(',', '.'));
+              final p = double.tryParse(priceCtrl.text.replaceAll(',', '.'));
               if (w != null && w > 0 && p != null && p > 0) {
                 provider.setItemWeight(item.id, w, p);
                 Navigator.pop(ctx);
@@ -1083,84 +1146,135 @@ class _PeopleDropRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: provider.people.map((person) {
-          final personTotal = provider.getPersonTotal(person.id);
-          return DragTarget<BillItem>(
-            onWillAcceptWithDetails: (_) => true,
-            onAcceptWithDetails: (details) {
-              provider.assignOneUnit(details.data.id, person.id);
-            },
-            builder: (context, candidates, _) {
-              final hovering = candidates.isNotEmpty;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutBack,
-                margin: const EdgeInsets.only(right: 16),
-                child: Column(
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: hovering ? 64 : 56,
-                      height: hovering ? 64 : 56,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: hovering
-                            ? person.avatarColor
-                            : person.avatarColor.withValues(alpha: 0.75),
-                        border: Border.all(
-                          color: hovering
-                              ? const Color(0xFF67E8F9)
-                              : person.avatarColor,
-                          width: hovering ? 3 : 2,
-                        ),
-                        boxShadow: hovering
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFF22D3EE)
-                                      .withValues(alpha: 0.6),
-                                  blurRadius: 20,
-                                  spreadRadius: 3,
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Center(
-                        child: Text(
-                          person.name[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 22,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      person.name,
-                      style: const TextStyle(
-                          color: AppTheme.textPrimary, fontSize: 12),
-                    ),
-                    if (personTotal > 0)
-                      Text(
-                        '${personTotal.toStringAsFixed(0)} ${provider.currency.symbol}',
-                        style: const TextStyle(
-                          color: AppTheme.accent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                  ],
+    return Stack(
+      alignment: Alignment.centerRight,
+      children: [
+        ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Colors.white,
+              Colors.white,
+              Colors.white,
+              Colors.transparent,
+            ],
+            stops: [0, 0.82, 0.94, 1],
+          ).createShader(bounds),
+          blendMode: BlendMode.dstIn,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children:
+                  provider.people
+                      .map((person) {
+                        final personTotal = provider.getPersonTotal(person.id);
+                        return DragTarget<BillItem>(
+                          onWillAcceptWithDetails: (_) => true,
+                          onAcceptWithDetails: (details) {
+                            provider.assignOneUnit(details.data.id, person.id);
+                          },
+                          builder: (context, candidates, _) {
+                            final hovering = candidates.isNotEmpty;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOutBack,
+                              margin: const EdgeInsets.only(right: 16),
+                              child: Column(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: hovering ? 64 : 56,
+                                    height: hovering ? 64 : 56,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: hovering
+                                          ? person.avatarColor
+                                          : person.avatarColor.withValues(
+                                              alpha: 0.75,
+                                            ),
+                                      border: Border.all(
+                                        color: hovering
+                                            ? const Color(0xFF67E8F9)
+                                            : person.avatarColor,
+                                        width: hovering ? 3 : 2,
+                                      ),
+                                      boxShadow: hovering
+                                          ? [
+                                              BoxShadow(
+                                                color: const Color(
+                                                  0xFF22D3EE,
+                                                ).withValues(alpha: 0.6),
+                                                blurRadius: 20,
+                                                spreadRadius: 3,
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        person.name[0].toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    person.name,
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  if (personTotal > 0)
+                                    Text(
+                                      '${personTotal.toStringAsFixed(0)} ${provider.currency.symbol}',
+                                      style: const TextStyle(
+                                        color: AppTheme.accent,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      })
+                      .cast<Widget>()
+                      .toList()
+                    ..add(_AddPersonButton(provider: provider)),
+            ),
+          ),
+        ),
+        if (provider.people.length > 2)
+          Positioned(
+            right: 0,
+            top: 16,
+            child: IgnorePointer(
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: AppTheme.surface.withValues(alpha: 0.72),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
                 ),
-              );
-            },
-          );
-        }).cast<Widget>().toList()
-          ..add(_AddPersonButton(provider: provider)),
-      ),
+                child: const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1314,14 +1428,20 @@ class _BottomBar extends StatelessWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Разделить счёт',
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1A1A1A))),
+                        Text(
+                          'Разделить счёт',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
                         SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded,
-                            size: 20, color: Color(0xFF1A1A1A)),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 20,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ],
                     ),
                   ),
@@ -1329,8 +1449,9 @@ class _BottomBar extends StatelessWidget {
               : FilledButton(
                   onPressed: null,
                   style: FilledButton.styleFrom(
-                    disabledBackgroundColor:
-                        AppTheme.primary.withValues(alpha: 0.2),
+                    disabledBackgroundColor: AppTheme.primary.withValues(
+                      alpha: 0.2,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -1338,14 +1459,20 @@ class _BottomBar extends StatelessWidget {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Разделить счёт',
-                          style: TextStyle(
-                              fontSize: 16,
-                              color: AppTheme.textSecondary,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        'Разделить счёт',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded,
-                          size: 20, color: AppTheme.textSecondary),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 20,
+                        color: AppTheme.textSecondary,
+                      ),
                     ],
                   ),
                 ),
@@ -1381,11 +1508,11 @@ class _ScanOption extends StatelessWidget {
         ),
         child: Icon(icon, color: color, size: 20),
       ),
-      title:
-          Text(title, style: const TextStyle(color: AppTheme.textPrimary)),
-      subtitle: Text(subtitle,
-          style: const TextStyle(
-              color: AppTheme.textSecondary, fontSize: 12)),
+      title: Text(title, style: const TextStyle(color: AppTheme.textPrimary)),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+      ),
       onTap: onTap,
     );
   }
@@ -1404,8 +1531,7 @@ class _EmptyItemsState extends StatelessWidget {
           Text(
             'Пока тут пусто\nДобавьте позиции или сканируйте чек',
             textAlign: TextAlign.center,
-            style:
-                TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
           ),
         ],
       ),
@@ -1455,9 +1581,10 @@ class _EqualSplitPreview extends StatelessWidget {
                     child: Text(
                       person.name[0].toUpperCase(),
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1465,14 +1592,16 @@ class _EqualSplitPreview extends StatelessWidget {
                     child: Text(
                       person.name,
                       style: const TextStyle(
-                          color: AppTheme.textPrimary, fontSize: 14),
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                   Text(
                     '${perPerson.toStringAsFixed(0)} $sym',
-                    style: AppTheme.moneyStyle(fontSize: 15).copyWith(
-                      color: person.avatarColor,
-                    ),
+                    style: AppTheme.moneyStyle(
+                      fontSize: 15,
+                    ).copyWith(color: person.avatarColor),
                   ),
                 ],
               ),
@@ -1491,8 +1620,10 @@ class _PercentageSplitEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sym = provider.currency.symbol;
-    final totalPct = provider.percentages.values
-        .fold<double>(0, (s, v) => s + v);
+    final totalPct = provider.percentages.values.fold<double>(
+      0,
+      (s, v) => s + v,
+    );
 
     return LiquidGlass(
       borderRadius: BorderRadius.circular(20),
@@ -1501,8 +1632,11 @@ class _PercentageSplitEditor extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.pie_chart_rounded,
-                  size: 18, color: AppTheme.accent),
+              const Icon(
+                Icons.pie_chart_rounded,
+                size: 18,
+                color: AppTheme.accent,
+              ),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -1516,7 +1650,9 @@ class _PercentageSplitEditor extends StatelessWidget {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: (totalPct - 100).abs() < 0.5
                       ? AppTheme.success.withValues(alpha: 0.15)
@@ -1550,9 +1686,10 @@ class _PercentageSplitEditor extends StatelessWidget {
                     child: Text(
                       person.name[0].toUpperCase(),
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1560,9 +1697,13 @@ class _PercentageSplitEditor extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(person.name,
-                            style: const TextStyle(
-                                color: AppTheme.textPrimary, fontSize: 13)),
+                        Text(
+                          person.name,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 13,
+                          ),
+                        ),
                         Text(
                           '${amount.toStringAsFixed(0)} $sym',
                           style: TextStyle(
@@ -1583,21 +1724,29 @@ class _PercentageSplitEditor extends StatelessWidget {
                         provider.setPersonPercentage(person.id, val);
                       },
                       keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                        decimal: true,
+                      ),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                          color: AppTheme.textPrimary, fontSize: 14),
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         hintText: '${pct.toStringAsFixed(0)}',
                         suffixText: '%',
                         suffixStyle: const TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 12),
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 8),
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1)),
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
                         ),
                       ),
                     ),
@@ -1627,8 +1776,11 @@ class _SharesSplitEditor extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.grid_view_rounded,
-                  size: 18, color: AppTheme.accent),
+              const Icon(
+                Icons.grid_view_rounded,
+                size: 18,
+                color: AppTheme.accent,
+              ),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -1643,7 +1795,9 @@ class _SharesSplitEditor extends StatelessWidget {
               Text(
                 'Всего: ${provider.totalShares}',
                 style: const TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 12),
+                  color: AppTheme.textSecondary,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -1661,9 +1815,10 @@ class _SharesSplitEditor extends StatelessWidget {
                     child: Text(
                       person.name[0].toUpperCase(),
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1671,9 +1826,13 @@ class _SharesSplitEditor extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(person.name,
-                            style: const TextStyle(
-                                color: AppTheme.textPrimary, fontSize: 13)),
+                        Text(
+                          person.name,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 13,
+                          ),
+                        ),
                         Text(
                           '${amount.toStringAsFixed(0)} $sym',
                           style: TextStyle(
@@ -1690,8 +1849,7 @@ class _SharesSplitEditor extends StatelessWidget {
                     children: [
                       GestureDetector(
                         onTap: s > 1
-                            ? () => provider.setPersonShares(
-                                person.id, s - 1)
+                            ? () => provider.setPersonShares(person.id, s - 1)
                             : null,
                         child: Container(
                           width: 32,
@@ -1700,15 +1858,16 @@ class _SharesSplitEditor extends StatelessWidget {
                             color: AppTheme.surface,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                                color: Colors.white
-                                    .withValues(alpha: 0.08)),
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
                           ),
-                          child: Icon(Icons.remove_rounded,
-                              size: 16,
-                              color: s > 1
-                                  ? AppTheme.textPrimary
-                                  : AppTheme.textSecondary
-                                      .withValues(alpha: 0.3)),
+                          child: Icon(
+                            Icons.remove_rounded,
+                            size: 16,
+                            color: s > 1
+                                ? AppTheme.textPrimary
+                                : AppTheme.textSecondary.withValues(alpha: 0.3),
+                          ),
                         ),
                       ),
                       SizedBox(
@@ -1725,8 +1884,7 @@ class _SharesSplitEditor extends StatelessWidget {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => provider.setPersonShares(
-                            person.id, s + 1),
+                        onTap: () => provider.setPersonShares(person.id, s + 1),
                         child: Container(
                           width: 32,
                           height: 32,
@@ -1734,11 +1892,14 @@ class _SharesSplitEditor extends StatelessWidget {
                             color: AppTheme.primary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                                color: AppTheme.primary
-                                    .withValues(alpha: 0.3)),
+                              color: AppTheme.primary.withValues(alpha: 0.3),
+                            ),
                           ),
-                          child: const Icon(Icons.add_rounded,
-                              size: 16, color: AppTheme.primary),
+                          child: const Icon(
+                            Icons.add_rounded,
+                            size: 16,
+                            color: AppTheme.primary,
+                          ),
                         ),
                       ),
                     ],

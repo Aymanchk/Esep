@@ -47,9 +47,7 @@ class ShareHelper {
       await launchUrl(url);
     } else {
       // Fallback to web Telegram
-      final webUrl = Uri.parse(
-        'https://t.me/share/url?text=$encoded',
-      );
+      final webUrl = Uri.parse('https://t.me/share/url?text=$encoded');
       await launchUrl(webUrl, mode: LaunchMode.externalApplication);
     }
   }

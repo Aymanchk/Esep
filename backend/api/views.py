@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from decimal import Decimal
 from django.db.models import Q, Sum, Count
 from .models import Bill, ChatRoom, Message, Debt, FriendGroup, Notification
 from .serializers import (
@@ -377,6 +378,83 @@ def debt_summary_view(request):
             }
 
     return Response({"balances": list(balances.values())})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def debt_settle_view(request):
+    """Return a minimized settlement plan for active debts involving the user."""
+    debts = Debt.objects.filter(
+        Q(from_user=request.user) | Q(to_user=request.user),
+        is_paid=False,
+    ).select_related("from_user", "to_user")
+
+    balances = {}
+    users = {}
+    for debt in debts:
+        amount = debt.amount
+        from_id = debt.from_user_id
+        to_id = debt.to_user_id
+        balances[from_id] = balances.get(from_id, Decimal("0")) - amount
+        balances[to_id] = balances.get(to_id, Decimal("0")) + amount
+        users[from_id] = debt.from_user
+        users[to_id] = debt.to_user
+
+    debtors = [
+        {"user_id": user_id, "amount": -amount}
+        for user_id, amount in balances.items()
+        if amount < 0
+    ]
+    creditors = [
+        {"user_id": user_id, "amount": amount}
+        for user_id, amount in balances.items()
+        if amount > 0
+    ]
+    debtors.sort(key=lambda item: item["amount"], reverse=True)
+    creditors.sort(key=lambda item: item["amount"], reverse=True)
+
+    settlements = []
+    i = j = 0
+    while i < len(debtors) and j < len(creditors):
+        amount = min(debtors[i]["amount"], creditors[j]["amount"])
+        if amount > 0:
+            from_user = users[debtors[i]["user_id"]]
+            to_user = users[creditors[j]["user_id"]]
+            settlements.append(
+                {
+                    "from_user": UserSerializer(
+                        from_user, context={"request": request}
+                    ).data,
+                    "to_user": UserSerializer(
+                        to_user, context={"request": request}
+                    ).data,
+                    "amount": float(amount),
+                }
+            )
+
+        debtors[i]["amount"] -= amount
+        creditors[j]["amount"] -= amount
+        if debtors[i]["amount"] == 0:
+            i += 1
+        if creditors[j]["amount"] == 0:
+            j += 1
+
+    net_balances = [
+        {
+            "user": UserSerializer(user, context={"request": request}).data,
+            "balance": float(amount),
+        }
+        for user_id, amount in balances.items()
+        if amount != 0
+        for user in [users[user_id]]
+    ]
+
+    return Response(
+        {
+            "settlements": settlements,
+            "net_balances": net_balances,
+        }
+    )
 
 
 # --- Friend Groups ---

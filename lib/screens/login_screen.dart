@@ -32,6 +32,15 @@ class _LoginScreenState extends State<LoginScreen>
     _floatAnim = Tween<double>(begin: -8, end: 8).animate(
       CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
+    _loadLastEmail();
+  }
+
+  Future<void> _loadLastEmail() async {
+    final lastEmail = await context.read<AuthProvider>().getLastEmail();
+    if (!mounted || lastEmail == null || _emailController.text.isNotEmpty) {
+      return;
+    }
+    _emailController.text = lastEmail;
   }
 
   @override
@@ -52,17 +61,17 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     if (success && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeShell()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
     }
   }
 
   void _continueAsGuest() {
     context.read<AuthProvider>().continueAsGuest();
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeShell()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
   }
 
   @override
@@ -107,8 +116,11 @@ class _LoginScreenState extends State<LoginScreen>
                           animation: _floatAnim,
                           builder: (_, __) => Transform.translate(
                             offset: Offset(0, _floatAnim.value),
-                            child: const Icon(Icons.account_balance_wallet_rounded,
-                                size: 56, color: AppTheme.primary),
+                            child: const Icon(
+                              Icons.account_balance_wallet_rounded,
+                              size: 56,
+                              color: AppTheme.primary,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -119,9 +131,9 @@ class _LoginScreenState extends State<LoginScreen>
                               AppTheme.primaryGradient.createShader(bounds),
                           child: Text(
                             'Fair Splitter',
-                            style: AppTheme.headingStyle(fontSize: 34).copyWith(
-                              color: Colors.white,
-                            ),
+                            style: AppTheme.headingStyle(
+                              fontSize: 34,
+                            ).copyWith(color: Colors.white),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -138,25 +150,24 @@ class _LoginScreenState extends State<LoginScreen>
                         ClipRRect(
                           borderRadius: BorderRadius.circular(24),
                           child: BackdropFilter(
-                            filter:
-                                ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                             child: Container(
                               padding: const EdgeInsets.all(24),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.06),
                                 border: Border(
                                   top: BorderSide(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.18)),
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                  ),
                                   left: BorderSide(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.12)),
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                  ),
                                   right: BorderSide(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.06)),
+                                    color: Colors.white.withValues(alpha: 0.06),
+                                  ),
                                   bottom: BorderSide(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.06)),
+                                    color: Colors.white.withValues(alpha: 0.06),
+                                  ),
                                 ),
                               ),
                               child: Column(
@@ -166,13 +177,12 @@ class _LoginScreenState extends State<LoginScreen>
                                     decoration: const InputDecoration(
                                       labelText: 'Email',
                                       hintText: 'email@example.com',
-                                      prefixIcon:
-                                          Icon(Icons.email_outlined),
+                                      prefixIcon: Icon(Icons.email_outlined),
                                     ),
-                                    keyboardType:
-                                        TextInputType.emailAddress,
+                                    keyboardType: TextInputType.emailAddress,
                                     style: const TextStyle(
-                                        color: AppTheme.textPrimary),
+                                      color: AppTheme.textPrimary,
+                                    ),
                                     validator: (v) {
                                       if (v == null || v.trim().isEmpty) {
                                         return 'Введите email';
@@ -186,20 +196,25 @@ class _LoginScreenState extends State<LoginScreen>
                                     decoration: InputDecoration(
                                       labelText: 'Пароль',
                                       hintText: 'Введите пароль',
-                                      prefixIcon:
-                                          const Icon(Icons.lock_outline),
+                                      prefixIcon: const Icon(
+                                        Icons.lock_outline,
+                                      ),
                                       suffixIcon: IconButton(
-                                        icon: Icon(_obscurePassword
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined),
-                                        onPressed: () => setState(() =>
-                                            _obscurePassword =
-                                                !_obscurePassword),
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_off_outlined
+                                              : Icons.visibility_outlined,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
                                       ),
                                     ),
                                     obscureText: _obscurePassword,
                                     style: const TextStyle(
-                                        color: AppTheme.textPrimary),
+                                      color: AppTheme.textPrimary,
+                                    ),
                                     validator: (v) {
                                       if (v == null || v.isEmpty) {
                                         return 'Введите пароль';
@@ -236,8 +251,9 @@ class _LoginScreenState extends State<LoginScreen>
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      AppTheme.primary.withValues(alpha: 0.45),
+                                  color: AppTheme.primary.withValues(
+                                    alpha: 0.45,
+                                  ),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -266,8 +282,11 @@ class _LoginScreenState extends State<LoginScreen>
                                           ),
                                         ),
                                         SizedBox(width: 8),
-                                        Icon(Icons.arrow_forward_rounded,
-                                            color: Color(0xFF1A1A1A), size: 18),
+                                        Icon(
+                                          Icons.arrow_forward_rounded,
+                                          color: Color(0xFF1A1A1A),
+                                          size: 18,
+                                        ),
                                       ],
                                     ),
                             ),
@@ -280,8 +299,7 @@ class _LoginScreenState extends State<LoginScreen>
                           children: [
                             const Text(
                               'Нет аккаунта? ',
-                              style:
-                                  TextStyle(color: AppTheme.textSecondary),
+                              style: TextStyle(color: AppTheme.textSecondary),
                             ),
                             GestureDetector(
                               onTap: () {
@@ -312,13 +330,15 @@ class _LoginScreenState extends State<LoginScreen>
                               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.05),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.1)),
+                                    color: Colors.white.withValues(alpha: 0.1),
+                                  ),
                                 ),
                                 child: const Text(
                                   'Продолжить без регистрации',

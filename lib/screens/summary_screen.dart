@@ -21,6 +21,8 @@ class _SummaryScreenState extends State<SummaryScreen>
   late Animation<double> _totalCountAnim;
   bool _saved = false;
   bool _saving = false;
+  int? _savedBillId;
+  final Set<String> _createdDebtKeys = {};
 
   @override
   void initState() {
@@ -51,30 +53,41 @@ class _SummaryScreenState extends State<SummaryScreen>
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Войдите в аккаунт, чтобы сохранять счета')),
+          const SnackBar(
+            content: Text('Войдите в аккаунт, чтобы сохранять счета'),
+          ),
         );
       }
       return;
     }
     try {
-      await auth.api.saveBill(
-        total: provider.total,
-        serviceChargePercent: provider.serviceChargePercent,
-        items: provider.items
-            .map((i) => {
+      if (_savedBillId == null) {
+        final result = await auth.api.saveBill(
+          total: provider.total,
+          serviceChargePercent: provider.serviceChargePercent,
+          items: provider.items
+              .map(
+                (i) => {
                   'id': i.id,
                   'name': i.name,
                   'price': i.price,
                   'quantity': i.quantity,
-                })
-            .toList(),
-        people: provider.people.map((p) => {'name': p.name, 'id': p.id}).toList(),
-        assignments: provider.unitAssignments,
-        title: provider.billTitle,
-        category: provider.category.id,
-        currency: provider.currency.code,
-        splitMode: provider.splitMode.name,
-      );
+                },
+              )
+              .toList(),
+          people: provider.people
+              .map((p) => {'name': p.name, 'id': p.id})
+              .toList(),
+          assignments: provider.unitAssignments,
+          title: provider.billTitle,
+          category: provider.category.id,
+          currency: provider.currency.code,
+          splitMode: provider.splitMode.name,
+        );
+        _savedBillId = _extractBillId(result);
+        await provider.clearDraft();
+      }
+      await _createDebtsForSavedBill(provider, auth);
       if (mounted) {
         setState(() {
           _saved = true;
@@ -84,13 +97,69 @@ class _SummaryScreenState extends State<SummaryScreen>
           const SnackBar(content: Text('Счёт сохранён в историю')),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
+        debugPrint(e.toString());
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось сохранить')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Не удалось сохранить')));
       }
+    }
+  }
+
+  int? _extractBillId(Map<String, dynamic> result) {
+    final bill = result['bill'];
+    final rawId = bill is Map<String, dynamic> ? bill['id'] : result['id'];
+    if (rawId is int) return rawId;
+    if (rawId is num) return rawId.toInt();
+    return int.tryParse(rawId?.toString() ?? '');
+  }
+
+  Future<void> _createDebtsForSavedBill(
+    BillProvider provider,
+    AuthProvider auth,
+  ) async {
+    final currentUserId = auth.userId;
+    if (currentUserId == null) {
+      throw Exception('Current user is missing');
+    }
+
+    final failedNames = <String>[];
+    for (final person in provider.people) {
+      final participantUserId = person.userId;
+      final amount = provider.getPersonTotal(person.id);
+      if (participantUserId == null ||
+          participantUserId == currentUserId ||
+          amount <= 0) {
+        continue;
+      }
+
+      final billId = _savedBillId;
+      final debtKey =
+          '${billId ?? 'bill'}:$participantUserId:${amount.toStringAsFixed(2)}';
+      if (_createdDebtKeys.contains(debtKey)) continue;
+
+      try {
+        await auth.api.createDebt(
+          fromUserId: participantUserId,
+          toUserId: currentUserId,
+          amount: amount,
+          billId: billId,
+          description: provider.billTitle.trim().isEmpty
+              ? 'Bill split'
+              : provider.billTitle.trim(),
+        );
+        _createdDebtKeys.add(debtKey);
+      } catch (_) {
+        failedNames.add(person.name);
+      }
+    }
+
+    if (failedNames.isNotEmpty) {
+      throw Exception(
+        'Bill saved, but debts failed for ${failedNames.join(', ')}',
+      );
     }
   }
 
@@ -108,9 +177,7 @@ class _SummaryScreenState extends State<SummaryScreen>
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: Stack(
           children: [
             // Ambient blobs
@@ -138,8 +205,11 @@ class _SummaryScreenState extends State<SummaryScreen>
                           child: LiquidGlass(
                             borderRadius: BorderRadius.circular(12),
                             padding: const EdgeInsets.all(10),
-                            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                                size: 18, color: AppTheme.textPrimary),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -157,18 +227,23 @@ class _SummaryScreenState extends State<SummaryScreen>
                         // Category badge
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
-                            color: provider.category.color
-                                .withValues(alpha: 0.15),
+                            color: provider.category.color.withValues(
+                              alpha: 0.15,
+                            ),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(provider.category.icon,
-                                  size: 14,
-                                  color: provider.category.color),
+                              Icon(
+                                provider.category.icon,
+                                size: 14,
+                                color: provider.category.color,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 provider.category.name,
@@ -196,22 +271,30 @@ class _SummaryScreenState extends State<SummaryScreen>
                           FadeTransition(
                             opacity: _confettiController,
                             child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, -0.4),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                parent: _confettiController,
-                                curve: Curves.easeOutBack,
-                              )),
+                              position:
+                                  Tween<Offset>(
+                                    begin: const Offset(0, -0.4),
+                                    end: Offset.zero,
+                                  ).animate(
+                                    CurvedAnimation(
+                                      parent: _confettiController,
+                                      curve: Curves.easeOutBack,
+                                    ),
+                                  ),
                               child: LiquidGlass(
                                 borderRadius: BorderRadius.circular(50),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 20, vertical: 10),
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: const [
-                                    Icon(Icons.celebration_rounded,
-                                        size: 18, color: AppTheme.success),
+                                    Icon(
+                                      Icons.celebration_rounded,
+                                      size: 18,
+                                      color: AppTheme.success,
+                                    ),
                                     SizedBox(width: 8),
                                     Text(
                                       'Счёт разделён!',
@@ -222,8 +305,11 @@ class _SummaryScreenState extends State<SummaryScreen>
                                       ),
                                     ),
                                     SizedBox(width: 8),
-                                    Icon(Icons.check_circle_rounded,
-                                        color: AppTheme.success, size: 18),
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      color: AppTheme.success,
+                                      size: 18,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -238,7 +324,9 @@ class _SummaryScreenState extends State<SummaryScreen>
                             builder: (_, __) => LiquidGlass(
                               borderRadius: BorderRadius.circular(24),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 20),
+                                horizontal: 24,
+                                vertical: 20,
+                              ),
                               child: Column(
                                 children: [
                                   Text(
@@ -275,19 +363,19 @@ class _SummaryScreenState extends State<SummaryScreen>
                                   label: 'Позиций',
                                 ),
                                 Container(
-                                    width: 1,
-                                    height: 28,
-                                    color: Colors.white
-                                        .withValues(alpha: 0.08)),
+                                  width: 1,
+                                  height: 28,
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                ),
                                 _StatChip(
                                   value: '${provider.people.length}',
                                   label: 'Человек',
                                 ),
                                 Container(
-                                    width: 1,
-                                    height: 28,
-                                    color: Colors.white
-                                        .withValues(alpha: 0.08)),
+                                  width: 1,
+                                  height: 28,
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                ),
                                 _StatChip(
                                   value: '${_sharedCount(provider)}',
                                   label: 'Общих',
@@ -318,17 +406,22 @@ class _SummaryScreenState extends State<SummaryScreen>
                             child: LiquidGlass(
                               borderRadius: BorderRadius.circular(16),
                               interactive: true,
-                              onTap: () => Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (_) => const HomeShell()),
-                                (route) => false,
-                              ),
+                              onTap: () =>
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(
+                                      builder: (_) => const HomeShell(),
+                                    ),
+                                    (route) => false,
+                                  ),
                               padding: EdgeInsets.zero,
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.home_rounded,
-                                      size: 18, color: AppTheme.textSecondary),
+                                  Icon(
+                                    Icons.home_rounded,
+                                    size: 18,
+                                    color: AppTheme.textSecondary,
+                                  ),
                                   SizedBox(width: 8),
                                   Text(
                                     'На главную',
@@ -354,27 +447,40 @@ class _SummaryScreenState extends State<SummaryScreen>
                                     padding: EdgeInsets.zero,
                                     child: const Center(
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.check_circle_rounded,
-                                              size: 18, color: AppTheme.success),
+                                          Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 18,
+                                            color: AppTheme.success,
+                                          ),
                                           SizedBox(width: 8),
-                                          Text('Сохранено в историю',
-                                              style: TextStyle(
-                                                  color: AppTheme.success,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 15)),
+                                          Text(
+                                            'Сохранено в историю',
+                                            style: TextStyle(
+                                              color: AppTheme.success,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
                                   )
                                 : DecoratedBox(
                                     decoration: BoxDecoration(
-                                      color: AppTheme.surface,
+                                      gradient: AppTheme.primaryGradient,
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: AppTheme.primary.withValues(alpha: 0.4),
-                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppTheme.primary.withValues(
+                                            alpha: 0.35,
+                                          ),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
                                     ),
                                     child: FilledButton.icon(
                                       onPressed: _saving ? null : _saveBill,
@@ -384,22 +490,30 @@ class _SummaryScreenState extends State<SummaryScreen>
                                               height: 18,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
-                                                color: AppTheme.primary,
+                                                color: Color(0xFF1A1A1A),
                                               ),
                                             )
-                                          : const Icon(Icons.save_rounded,
-                                              size: 18, color: AppTheme.primary),
+                                          : const Icon(
+                                              Icons.save_rounded,
+                                              size: 18,
+                                              color: Color(0xFF1A1A1A),
+                                            ),
                                       label: Text(
-                                        _saving ? 'Сохраняем...' : 'Сохранить в историю',
+                                        _saving
+                                            ? 'Сохраняем...'
+                                            : 'Сохранить в историю',
                                         style: const TextStyle(
-                                            color: AppTheme.primary,
-                                            fontWeight: FontWeight.w600),
+                                          color: Color(0xFF1A1A1A),
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                       style: FilledButton.styleFrom(
                                         backgroundColor: Colors.transparent,
                                         shadowColor: Colors.transparent,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -421,34 +535,29 @@ class _SummaryScreenState extends State<SummaryScreen>
                         children: [
                           SizedBox(
                             width: double.infinity,
-                            height: 52,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: AppTheme.primaryGradient,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color:
-                                        AppTheme.primary.withValues(alpha: 0.4),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 6),
+                            height: 44,
+                            child: LiquidGlass(
+                              borderRadius: BorderRadius.circular(12),
+                              interactive: true,
+                              onTap: () => ShareHelper.shareViaTelegram(report),
+                              padding: EdgeInsets.zero,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(
+                                    Icons.send_rounded,
+                                    size: 16,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Telegram',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
-                              ),
-                              child: FilledButton.icon(
-                                onPressed: () =>
-                                    ShareHelper.shareViaTelegram(report),
-                                icon: const Icon(Icons.send_rounded,
-                                    size: 18, color: Color(0xFF1A1A1A)),
-                                label: const Text('Telegram',
-                                    style: TextStyle(color: Color(0xFF1A1A1A))),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
                               ),
                             ),
                           ),
@@ -465,16 +574,22 @@ class _SummaryScreenState extends State<SummaryScreen>
                                         ShareHelper.shareViaWhatsApp(report),
                                     padding: EdgeInsets.zero,
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: const [
-                                        Icon(Icons.chat_rounded,
-                                            size: 16,
-                                            color: AppTheme.textSecondary),
+                                        Icon(
+                                          Icons.chat_rounded,
+                                          size: 16,
+                                          color: AppTheme.textSecondary,
+                                        ),
                                         SizedBox(width: 6),
-                                        Text('WhatsApp',
-                                            style: TextStyle(
-                                                color: AppTheme.textSecondary,
-                                                fontSize: 13)),
+                                        Text(
+                                          'WhatsApp',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 13,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -491,16 +606,22 @@ class _SummaryScreenState extends State<SummaryScreen>
                                         ShareHelper.shareViaSystem(report),
                                     padding: EdgeInsets.zero,
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: const [
-                                        Icon(Icons.share_rounded,
-                                            size: 16,
-                                            color: AppTheme.textSecondary),
+                                        Icon(
+                                          Icons.share_rounded,
+                                          size: 16,
+                                          color: AppTheme.textSecondary,
+                                        ),
                                         SizedBox(width: 6),
-                                        Text('Ещё',
-                                            style: TextStyle(
-                                                color: AppTheme.textSecondary,
-                                                fontSize: 13)),
+                                        Text(
+                                          'Ещё',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 13,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -602,9 +723,9 @@ class _PersonCard extends StatelessWidget {
                 ),
                 Text(
                   '${total.toStringAsFixed(0)} ${provider.currency.symbol}',
-                  style: AppTheme.moneyStyle(fontSize: 20).copyWith(
-                    color: person.avatarColor,
-                  ),
+                  style: AppTheme.moneyStyle(
+                    fontSize: 20,
+                  ).copyWith(color: person.avatarColor),
                 ),
               ],
             ),
@@ -615,8 +736,7 @@ class _PersonCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: provider.total > 0 ? (total / provider.total) : 0,
                 backgroundColor: AppTheme.surfaceLight,
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(person.avatarColor),
+                valueColor: AlwaysStoppedAnimation<Color>(person.avatarColor),
                 minHeight: 4,
               ),
             ),
@@ -625,18 +745,21 @@ class _PersonCard extends StatelessWidget {
               const Divider(height: 1),
               const SizedBox(height: 8),
               ...items.map((item) {
-                final splitPrice =
-                    provider.getItemSplitPrice(item.id, person.id);
-                final unitCount =
-                    provider.getPersonUnitCount(item.id, person.id);
+                final splitPrice = provider.getItemSplitPrice(
+                  item.id,
+                  person.id,
+                );
+                final unitCount = provider.getPersonUnitCount(
+                  item.id,
+                  person.id,
+                );
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 5),
                   child: Row(
                     children: [
                       Expanded(
                         child: Text(
-                          item.name +
-                              (unitCount > 1 ? ' ×$unitCount' : ''),
+                          item.name + (unitCount > 1 ? ' ×$unitCount' : ''),
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 13,
@@ -683,10 +806,7 @@ class _StatChip extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 11,
-          ),
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
         ),
       ],
     );

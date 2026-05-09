@@ -38,13 +38,12 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final chatRooms = context.watch<ChatProvider>().rooms;
     final chatBadge = chatRooms.fold<int>(
-        0, (sum, r) => sum + ((r['unread_count'] as int?) ?? 0));
+      0,
+      (sum, r) => sum + ((r['unread_count'] as int?) ?? 0),
+    );
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: GlassBottomNavBar(
         currentIndex: _currentIndex,
         chatBadge: chatBadge,
