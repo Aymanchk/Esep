@@ -1,3 +1,6 @@
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/bill_provider.dart';
@@ -31,7 +34,7 @@ class ShareHelper {
     }
 
     buf.writeln('');
-    buf.writeln('Разделено в Fair Splitter');
+    buf.writeln('Разделено в Esep');
 
     return buf.toString();
   }
@@ -62,6 +65,32 @@ class ShareHelper {
     } else {
       final webUrl = Uri.parse('https://wa.me/?text=$encoded');
       await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  static Future<void> shareBillImage(GlobalKey boundaryKey) async {
+    try {
+      final boundary = boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+
+      final pngBytes = byteData.buffer.asUint8List();
+
+      await Share.shareXFiles(
+        [
+          XFile.fromData(
+            pngBytes,
+            mimeType: 'image/png',
+            name: 'bill_summary.png',
+          )
+        ],
+        text: 'Наш счёт в Esep!',
+      );
+    } catch (e) {
+      debugPrint('Error sharing bill image: $e');
     }
   }
 }

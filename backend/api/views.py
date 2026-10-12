@@ -1,26 +1,46 @@
 from rest_framework import generics, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db.models import Q, Sum, Count
-from .models import Bill, ChatRoom, Message, Debt, FriendGroup, Notification
+from django.conf import settings
+from datetime import timedelta
+import hmac
+import hashlib
+import random
+import json
+import threading
+import requests
+from urllib.parse import parse_qsl
+from .models import Bill, Debt, FriendGroup, Notification, PhoneOTP
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
     LoginSerializer,
     BillSerializer,
     ProfileUpdateSerializer,
-    ChatRoomSerializer,
-    MessageSerializer,
     DebtSerializer,
     FriendGroupSerializer,
     NotificationSerializer,
 )
 
 User = get_user_model()
+
+
+class OtpRequestThrottle(AnonRateThrottle):
+    scope = "otp_request"
+
+
+class OtpVerifyThrottle(AnonRateThrottle):
+    scope = "otp_verify"
+
+
+class OcrScanThrottle(AnonRateThrottle):
+    scope = "ocr_scan"
 
 
 def get_tokens_for_user(user):
@@ -92,6 +112,181 @@ def login_view(request):
     })
 
 
+def verify_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
+    try:
+        parsed = dict(parse_qsl(init_data, keep_blank_values=True))
+    except Exception:
+        return None
+
+    if "hash" not in parsed:
+        return None
+
+    received_hash = parsed.pop("hash")
+
+    # Sort remaining fields alphabetically and join with \n
+    sorted_items = sorted(parsed.items())
+    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted_items)
+
+    # If bot_token is empty and settings.DEBUG is True, allow bypass for easy local development
+    if not bot_token:
+        if getattr(settings, "DEBUG", False):
+            user_data = parsed.get("user")
+            if user_data:
+                try:
+                    return json.loads(user_data)
+                except Exception:
+                    pass
+        return None
+
+    # Key = HMAC-SHA256("WebappData", bot_token)
+    secret_key = hmac.new(b"WebappData", bot_token.encode(), hashlib.sha256).digest()
+
+    # Hash = HMAC-SHA256(data_check_string, secret_key)
+    computed_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+
+    if hmac.compare_digest(computed_hash, received_hash):
+        user_data = parsed.get("user")
+        if user_data:
+            try:
+                return json.loads(user_data)
+            except Exception:
+                pass
+    return None
+
+
+def send_telegram_message_async(chat_id, text, webapp_url=None):
+    def target():
+        token = getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+        if not token or not chat_id:
+            return
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "HTML"
+        }
+        if webapp_url:
+            payload["reply_markup"] = {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "Открыть FairSplitter",
+                            "web_app": {"url": webapp_url}
+                        }
+                    ]
+                ]
+            }
+        try:
+            requests.post(url, json=payload, timeout=5)
+        except Exception:
+            pass
+
+    threading.Thread(target=target).start()
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([OtpRequestThrottle])
+def send_otp_view(request):
+    phone = request.data.get("phone")
+    if not phone:
+        return Response({"error": "Введите номер телефона"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Generate random 6-digit code
+    code = f"{random.randint(100000, 999999)}"
+
+    # Save code to PhoneOTP
+    PhoneOTP.objects.update_or_create(phone=phone, defaults={"code": code})
+
+    return Response({"success": True})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([OtpVerifyThrottle])
+def verify_otp_view(request):
+    phone = request.data.get("phone")
+    code = request.data.get("code")
+    if not phone or not code:
+        return Response({"error": "Введите номер телефона и код"}, status=status.HTTP_400_BAD_REQUEST)
+
+    is_valid = False
+
+    # In debug/testing mode, accept test codes
+    if code in ("123456", "000000") and getattr(settings, "DEBUG", False):
+        is_valid = True
+    else:
+        try:
+            otp = PhoneOTP.objects.get(phone=phone)
+            expiry_cutoff = timezone.now() - timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
+            if otp.code == code and otp.created_at >= expiry_cutoff:
+                is_valid = True
+                otp.delete()
+        except PhoneOTP.DoesNotExist:
+            pass
+
+    if not is_valid:
+        return Response({"error": "Неверный или просроченный код"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    # Get or create user
+    user, created = User.objects.get_or_create(phone=phone, defaults={
+        "username": f"phone_{phone.replace('+', '').replace(' ', '')}",
+        "email": f"phone_{phone}@fairsplitter.local",
+    })
+    
+    if created:
+        user.set_unusable_password()
+        user.save()
+        
+    tokens = get_tokens_for_user(user)
+    return Response({
+        "user": UserSerializer(user, context={"request": request}).data,
+        "token": tokens["access"],
+        "refresh": tokens["refresh"],
+    })
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def telegram_auth_view(request):
+    init_data = request.data.get("initData")
+    if not init_data:
+        return Response({"error": "initData is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    bot_token = getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+    tg_user = verify_telegram_init_data(init_data, bot_token)
+    
+    if not tg_user:
+        return Response({"error": "Invalid Telegram signature or bot token not configured"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    tg_id = str(tg_user.get("id"))
+    first_name = tg_user.get("first_name", "")
+    username = tg_user.get("username", "")
+    
+    try:
+        user = User.objects.get(telegram_id=tg_id)
+    except User.DoesNotExist:
+        username_val = username or f"tg_{tg_id}"
+        if User.objects.filter(username=username_val).exists():
+            username_val = f"tg_{tg_id}"
+            
+        user = User.objects.create(
+            telegram_id=tg_id,
+            username=username_val,
+            first_name=first_name,
+            email=f"tg_{tg_id}@fairsplitter.local",
+        )
+        user.set_unusable_password()
+        user.save()
+        
+    tokens = get_tokens_for_user(user)
+    return Response({
+        "user": UserSerializer(user, context={"request": request}).data,
+        "token": tokens["access"],
+        "refresh": tokens["refresh"],
+    })
+
+
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def profile_view(request):
@@ -131,99 +326,68 @@ def search_users(request):
     return Response({"results": UserSerializer(users, many=True, context={"request": request}).data})
 
 
-# --- Chat ---
+# --- Bills ---
 
-@api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
-def chat_rooms_view(request):
-    if request.method == "GET":
-        rooms = ChatRoom.objects.filter(participants=request.user)
-        serializer = ChatRoomSerializer(
-            rooms, many=True, context={"request": request}
-        )
-        return Response({"rooms": serializer.data})
+def recalculate_and_simplify_debts():
+    """
+    Simplifies all active unpaid debts in the system using a greedy algorithm.
+    """
+    active_debts = list(Debt.objects.filter(is_paid=False))
+    if not active_debts:
+        return
+        
+    balances = {}
+    user_objects = {}
+    for d in active_debts:
+        balances[d.from_user_id] = balances.get(d.from_user_id, 0.0) - float(d.amount)
+        balances[d.to_user_id] = balances.get(d.to_user_id, 0.0) + float(d.amount)
+        if d.from_user_id not in user_objects:
+            user_objects[d.from_user_id] = d.from_user
+        if d.to_user_id not in user_objects:
+            user_objects[d.to_user_id] = d.to_user
 
-    # POST — create or get existing 1:1 room
-    participant_ids = request.data.get("participants", [])
-    if not participant_ids:
-        return Response(
-            {"error": "Укажите участников"}, status=status.HTTP_400_BAD_REQUEST
-        )
+    debtors = []
+    creditors = []
+    for uid, bal in balances.items():
+        if bal < -0.01:
+            debtors.append([uid, bal])
+        elif bal > 0.01:
+            creditors.append([uid, bal])
 
-    all_ids = set(participant_ids + [request.user.id])
+    debtors.sort(key=lambda x: x[1])
+    creditors.sort(key=lambda x: x[1], reverse=True)
 
-    # Check for existing room with same participants
-    for room in ChatRoom.objects.filter(participants=request.user):
-        room_ids = set(room.participants.values_list("id", flat=True))
-        if room_ids == all_ids:
-            return Response(
-                ChatRoomSerializer(room, context={"request": request}).data
-            )
+    new_debts = []
+    i = 0
+    j = 0
+    while i < len(debtors) and j < len(creditors):
+        debtor_id, debtor_bal = debtors[i]
+        creditor_id, creditor_bal = creditors[j]
 
-    # Create new room
-    room = ChatRoom.objects.create()
-    room.participants.set(all_ids)
-    return Response(
-        ChatRoomSerializer(room, context={"request": request}).data,
-        status=status.HTTP_201_CREATED,
-    )
+        amount_to_transfer = min(-debtor_bal, creditor_bal)
+        amount_to_transfer = round(amount_to_transfer, 2)
 
+        if amount_to_transfer > 0.01:
+            new_debts.append(Debt(
+                from_user=user_objects[debtor_id],
+                to_user=user_objects[creditor_id],
+                amount=amount_to_transfer,
+                description="Упрощенный баланс",
+                is_paid=False
+            ))
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def chat_messages_view(request, room_id):
-    try:
-        room = ChatRoom.objects.get(id=room_id, participants=request.user)
-    except ChatRoom.DoesNotExist:
-        return Response({"error": "Чат не найден"}, status=status.HTTP_404_NOT_FOUND)
+        debtors[i][1] += amount_to_transfer
+        creditors[j][1] -= amount_to_transfer
 
-    messages = room.messages.all()
-    before = request.query_params.get("before")
-    if before:
-        try:
-            messages = messages.filter(id__lt=int(before))
-        except ValueError:
-            return Response({"error": "Неверный параметр before"}, status=status.HTTP_400_BAD_REQUEST)
-    messages = messages.order_by("-created_at")[:50]
+        if abs(debtors[i][1]) < 0.01:
+            i += 1
+        if abs(creditors[j][1]) < 0.01:
+            j += 1
 
-    return Response(
-        {"messages": MessageSerializer(
-            reversed(list(messages)), many=True, context={"request": request}
-        ).data}
-    )
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def chat_send_message_view(request, room_id):
-    try:
-        room = ChatRoom.objects.get(id=room_id, participants=request.user)
-    except ChatRoom.DoesNotExist:
-        return Response({"error": "Чат не найден"}, status=status.HTTP_404_NOT_FOUND)
-
-    text = request.data.get("text", "").strip()
-    if not text:
-        return Response(
-            {"error": "Пустое сообщение"}, status=status.HTTP_400_BAD_REQUEST
-        )
-
-    message = Message.objects.create(room=room, sender=request.user, text=text)
-    return Response(
-        MessageSerializer(message, context={"request": request}).data,
-        status=status.HTTP_201_CREATED,
-    )
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def chat_mark_read_view(request, room_id):
-    try:
-        room = ChatRoom.objects.get(id=room_id, participants=request.user)
-    except ChatRoom.DoesNotExist:
-        return Response({"error": "Чат не найден"}, status=status.HTTP_404_NOT_FOUND)
-
-    room.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
-    return Response({"status": "ok"})
+    from django.db import transaction
+    with transaction.atomic():
+        Debt.objects.filter(is_paid=False).delete()
+        Debt.objects.bulk_create(new_debts)
 
 
 class BillListCreateView(generics.ListCreateAPIView):
@@ -242,6 +406,48 @@ class BillListCreateView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        
+        debts_data = request.data.get('debts', [])
+        if isinstance(debts_data, list):
+            for d in debts_data:
+                from_uid = d.get('from_user_id')
+                to_uid = d.get('to_user_id')
+                amount = d.get('amount')
+                desc = d.get('description', 'Разделение счёта')
+                if from_uid and to_uid and amount and float(amount) > 0.01:
+                    Debt.objects.create(
+                        from_user_id=from_uid,
+                        to_user_id=to_uid,
+                        amount=float(amount),
+                        description=desc,
+                        is_paid=False
+                    )
+            recalculate_and_simplify_debts()
+            
+            # Send Telegram notifications to participants
+            creator = request.user
+            creator_name = creator.first_name or creator.username or "Ваш друг"
+            title = serializer.validated_data.get("title") or "Без названия"
+            total = serializer.validated_data.get("total") or 0
+            referer = request.META.get('HTTP_REFERER', 'http://localhost:8080/')
+            
+            people_data = request.data.get('people', [])
+            if isinstance(people_data, list):
+                for p in people_data:
+                    user_id = p.get('userId')
+                    if user_id and int(user_id) != creator.id:
+                        try:
+                            participant = User.objects.get(id=user_id)
+                            if participant.telegram_id:
+                                msg = (
+                                    f"<b>🍽️ Новый совместный счет!</b>\n\n"
+                                    f"Пользователь <b>{creator_name}</b> разделил счет <b>«{title}»</b> на общую сумму <b>{float(total):,.0f} сом</b>.\n\n"
+                                    f"Вы добавлены как участник. Откройте FairSplitter, чтобы посмотреть детали чека и ваши долги."
+                                )
+                                send_telegram_message_async(participant.telegram_id, msg, referer)
+                        except (User.DoesNotExist, ValueError):
+                            pass
+            
         return Response({"bill": serializer.data}, status=status.HTTP_201_CREATED)
 
 
@@ -289,6 +495,7 @@ def debts_view(request):
         )
     try:
         debt = serializer.save()
+        recalculate_and_simplify_debts()
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -339,6 +546,8 @@ def debt_mark_paid_view(request, debt_id):
         body=f"{request.user.first_name} отметил долг {debt.amount} сом как оплаченный",
         data={"debt_id": debt.id},
     )
+
+    recalculate_and_simplify_debts()
 
     return Response(DebtSerializer(debt, context={"request": request}).data)
 
@@ -503,3 +712,24 @@ def stats_view(request):
         ],
         "top_people": [{"name": name, "count": count} for name, count in top_people],
     })
+
+
+from .ocr_service import scan_receipt_with_gemini
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([OcrScanThrottle])
+def ocr_scan_view(request):
+    if "image" not in request.FILES:
+        return Response({"error": "Файл изображения не найден в запросе"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    image_file = request.FILES["image"]
+    image_bytes = image_file.read()
+    mime_type = image_file.content_type or "image/jpeg"
+    
+    try:
+        items = scan_receipt_with_gemini(image_bytes, mime_type)
+        return Response({"items": items})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+

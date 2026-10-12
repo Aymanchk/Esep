@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/liquid_glass.dart';
+import '../utils/tma_helper.dart';
 import 'home_shell.dart';
 import 'login_screen.dart';
 
@@ -60,6 +61,27 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _floatAnim = Tween<double>(begin: 0, end: 12).animate(
       CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkTelegramWebApp();
+    });
+  }
+
+  void _checkTelegramWebApp() async {
+    try {
+      final initData = TmaHelper.getInitData();
+      if (initData != null && initData.isNotEmpty) {
+        final auth = context.read<AuthProvider>();
+        final success = await auth.tryTelegramAutoLogin(initData);
+        if (success && mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeShell()),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Telegram WebApp check failed: $e');
+    }
   }
 
   @override
@@ -207,7 +229,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           const SizedBox(width: 8),
                           _FeaturePill(Icons.account_balance_wallet_rounded, 'Долги'),
                           const SizedBox(width: 8),
-                          _FeaturePill(Icons.chat_bubble_rounded, 'Чат'),
+                          _FeaturePill(Icons.qr_code_rounded, 'QR Оплата'),
                         ],
                       ),
                     ),

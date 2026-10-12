@@ -5,15 +5,14 @@ urlpatterns = [
     # Auth
     path("auth/register/", views.register_view, name="register"),
     path("auth/login/", views.login_view, name="login"),
+    path("auth/otp/send/", views.send_otp_view, name="send-otp"),
+    path("auth/otp/verify/", views.verify_otp_view, name="verify-otp"),
+    path("auth/telegram/", views.telegram_auth_view, name="telegram-auth"),
     path("auth/me/", views.profile_view, name="profile"),
     path("auth/me/avatar/", views.upload_avatar, name="upload-avatar"),
     # Users
     path("users/search/", views.search_users, name="user-search"),
-    # Chat
-    path("chat/rooms/", views.chat_rooms_view, name="chat-rooms"),
-    path("chat/rooms/<int:room_id>/messages/", views.chat_messages_view, name="chat-messages"),
-    path("chat/rooms/<int:room_id>/send/", views.chat_send_message_view, name="chat-send"),
-    path("chat/rooms/<int:room_id>/read/", views.chat_mark_read_view, name="chat-mark-read"),
+
     # Bills
     path("bills/", views.BillListCreateView.as_view(), name="bill-list"),
     path("bills/<int:pk>/", views.BillDetailView.as_view(), name="bill-detail"),
@@ -30,4 +29,6 @@ urlpatterns = [
     path("notifications/<int:notification_id>/read/", views.notification_read_single_view, name="notification-read"),
     # Statistics
     path("stats/", views.stats_view, name="stats"),
+    # OCR Scanner (AI-powered)
+    path("ocr/scan/", views.ocr_scan_view, name="ocr-scan"),
 ]

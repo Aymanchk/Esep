@@ -54,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _pickAvatar() async {
+    final auth = context.read<AuthProvider>();
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       maxWidth: 512,
@@ -62,11 +63,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
     if (picked == null) return;
     setState(() => _uploadingAvatar = true);
-    final auth = context.read<AuthProvider>();
     final ok = await auth.uploadAvatar(File(picked.path));
     if (!mounted) return;
     setState(() => _uploadingAvatar = false);
-    if (ok && mounted) {
+    if (ok) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Фото обновлено')));
     }

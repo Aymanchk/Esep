@@ -4,35 +4,20 @@ from django.db import models
 
 class User(AbstractUser):
     phone = models.CharField(max_length=20, blank=True, null=True)
+    telegram_id = models.CharField(max_length=50, blank=True, null=True, unique=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
 
     def __str__(self):
         return self.email or self.username
 
 
-class ChatRoom(models.Model):
-    participants = models.ManyToManyField(User, related_name="chat_rooms")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-created_at"]
+class PhoneOTP(models.Model):
+    phone = models.CharField(max_length=20, unique=True)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"ChatRoom #{self.id}"
-
-
-class Message(models.Model):
-    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name="messages")
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_messages")
-    text = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ["created_at"]
-
-    def __str__(self):
-        return f"Message #{self.id} from {self.sender}"
+        return f"{self.phone} - {self.code}"
 
 
 class Bill(models.Model):
@@ -90,7 +75,6 @@ class Notification(models.Model):
         ("bill_added", "Добавлен в счёт"),
         ("debt_paid", "Долг оплачен"),
         ("debt_created", "Новый долг"),
-        ("new_message", "Новое сообщение"),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")

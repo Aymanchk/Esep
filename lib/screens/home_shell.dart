@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/chat_provider.dart';
 import '../widgets/glass_bottom_nav_bar.dart';
 import 'home_screen.dart';
 import 'history_screen.dart';
 import 'debts_screen.dart';
-import 'chat_list_screen.dart';
 import 'profile_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -23,7 +20,6 @@ class _HomeShellState extends State<HomeShell> {
     const HomeScreen(),
     HistoryScreen(key: ValueKey(_historyKey)),
     const DebtsScreen(),
-    const ChatListScreen(),
     const ProfileScreen(),
   ];
 
@@ -36,9 +32,6 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final chatRooms = context.watch<ChatProvider>().rooms;
-    final chatBadge = chatRooms.fold<int>(
-        0, (sum, r) => sum + ((r['unread_count'] as int?) ?? 0));
     return Scaffold(
       extendBody: true,
       body: IndexedStack(
@@ -47,7 +40,6 @@ class _HomeShellState extends State<HomeShell> {
       ),
       bottomNavigationBar: GlassBottomNavBar(
         currentIndex: _currentIndex,
-        chatBadge: chatBadge,
         onTap: _onTabTap,
       ),
     );

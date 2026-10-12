@@ -51,6 +51,16 @@ android/key.properties
 *.keystore
 *.jks
 
+# iOS signing
+*.p12
+*.mobileprovision
+*.cer
+*.pem
+
+# Local secrets of any kind
+secrets.properties
+*.secrets.json
+
 # Firebase / Google Services
 **/android/app/google-services.json
 **/ios/Runner/GoogleService-Info.plist

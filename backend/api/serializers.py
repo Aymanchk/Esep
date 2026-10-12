@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Bill, ChatRoom, Message, Debt, FriendGroup, Notification
+from .models import Bill, Debt, FriendGroup, Notification
 
 User = get_user_model()
 
@@ -159,33 +159,4 @@ class NotificationSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 
-class MessageSerializer(serializers.ModelSerializer):
-    sender = UserSerializer(read_only=True)
 
-    class Meta:
-        model = Message
-        fields = ["id", "sender", "text", "created_at", "is_read"]
-
-
-class ChatRoomSerializer(serializers.ModelSerializer):
-    participants = UserSerializer(many=True, read_only=True)
-    last_message = serializers.SerializerMethodField()
-    unread_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ChatRoom
-        fields = ["id", "participants", "last_message", "unread_count", "created_at"]
-
-    def get_last_message(self, obj):
-        msg = obj.messages.order_by("-created_at").first()
-        if msg:
-            return MessageSerializer(msg, context=self.context).data
-        return None
-
-    def get_unread_count(self, obj):
-        user = self.context.get("request_user") or (
-            self.context.get("request").user if self.context.get("request") else None
-        )
-        if user:
-            return obj.messages.filter(is_read=False).exclude(sender=user).count()
-        return 0

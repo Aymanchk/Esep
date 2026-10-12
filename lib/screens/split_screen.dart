@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/bill_item.dart';
 import '../providers/bill_provider.dart';
+import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/liquid_glass.dart';
 import '../utils/ocr_helper.dart';
@@ -218,6 +219,8 @@ class _SplitScreenState extends State<SplitScreen>
   }
 
   Future<void> _scanReceipt() async {
+    final apiService = context.read<AuthProvider>().api;
+    final billProvider = context.read<BillProvider>();
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -264,32 +267,28 @@ class _SplitScreenState extends State<SplitScreen>
       ),
     );
 
-    if (source == null || !context.mounted) return;
+    if (source == null || !mounted) return;
     try {
-      final items = await OcrHelper.scanReceipt(source: source);
+      final items = await OcrHelper.scanReceipt(source: source, apiService: apiService);
+      if (!mounted) return;
       if (items.isEmpty) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'Не удалось распознать. Попробуйте при хорошем освещении.'),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Не удалось распознать. Попробуйте при хорошем освещении.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
         return;
       }
-      if (context.mounted) {
-        context.read<BillProvider>().addItemsFromOcr(items);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Добавлено ${items.length} позиций')),
-        );
-      }
+      billProvider.addItemsFromOcr(items);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Добавлено ${items.length} позиций')),
+      );
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
 
@@ -753,7 +752,182 @@ class _ItemTile extends StatelessWidget {
         ),
       ),
       childWhenDragging: Opacity(opacity: 0.3, child: _card(context)),
-      child: _card(context),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _showAssignItemBottomSheet(context),
+        child: _card(context),
+      ),
+    );
+  }
+
+  void _showAssignItemBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.textSecondary.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.name,
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Всего: ${item.quantity.toStringAsFixed(0)} шт. на сумму ${item.totalPrice.toStringAsFixed(0)} ${provider.currency.symbol}',
+                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: () {
+                                setModalState(() {
+                                  for (final p in provider.people) {
+                                    final current = provider.getPersonUnitCount(item.id, p.id);
+                                    if (current == 0) {
+                                      provider.assignOneUnit(item.id, p.id);
+                                    }
+                                  }
+                                });
+                              },
+                              child: const Text('Все', style: TextStyle(color: AppTheme.primary)),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setModalState(() {
+                                  for (final p in provider.people) {
+                                    final count = provider.getPersonUnitCount(item.id, p.id);
+                                    for (int i = 0; i < count; i++) {
+                                      provider.unassignOneUnit(item.id, p.id);
+                                    }
+                                  }
+                                });
+                              },
+                              child: const Text('Сброс', style: TextStyle(color: AppTheme.danger)),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                    const Divider(color: Colors.white10, height: 24),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.4,
+                      ),
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: provider.people.map((person) {
+                          final count = provider.getPersonUnitCount(item.id, person.id);
+                          final isAssigned = count > 0;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: person.avatarColor,
+                                  child: Text(
+                                    person.name[0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    person.name,
+                                    style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: count > 0
+                                          ? () {
+                                              setModalState(() {
+                                                provider.unassignOneUnit(item.id, person.id);
+                                              });
+                                            }
+                                          : null,
+                                      icon: const Icon(Icons.remove_circle_outline_rounded),
+                                      color: AppTheme.textSecondary,
+                                      iconSize: 22,
+                                    ),
+                                    Text(
+                                      '$count',
+                                      style: TextStyle(
+                                        color: isAssigned ? AppTheme.primary : AppTheme.textSecondary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () {
+                                        setModalState(() {
+                                          provider.assignOneUnit(item.id, person.id);
+                                        });
+                                      },
+                                      icon: const Icon(Icons.add_circle_outline_rounded),
+                                      color: AppTheme.primary,
+                                      iconSize: 22,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Готово'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1588,7 +1762,7 @@ class _PercentageSplitEditor extends StatelessWidget {
                       style: const TextStyle(
                           color: AppTheme.textPrimary, fontSize: 14),
                       decoration: InputDecoration(
-                        hintText: '${pct.toStringAsFixed(0)}',
+                        hintText: pct.toStringAsFixed(0),
                         suffixText: '%',
                         suffixStyle: const TextStyle(
                             color: AppTheme.textSecondary, fontSize: 12),

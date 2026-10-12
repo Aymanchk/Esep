@@ -125,7 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'Присоединяйтесь к Fair Splitter',
+                          'Присоединяйтесь к Esep',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppTheme.textSecondary,

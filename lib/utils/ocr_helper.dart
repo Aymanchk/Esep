@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/api_service.dart';
 
 class OcrHelper {
   static Future<List<Map<String, dynamic>>> scanReceipt({
     ImageSource source = ImageSource.camera,
+    ApiService? apiService,
   }) async {
     final picker = ImagePicker();
     final image = await picker.pickImage(
@@ -14,6 +17,15 @@ class OcrHelper {
     );
 
     if (image == null) return [];
+
+    if (apiService != null) {
+      try {
+        final items = await apiService.scanReceipt(File(image.path));
+        if (items.isNotEmpty) return items;
+      } catch (_) {
+        // Fallback to local on-device OCR
+      }
+    }
 
     final inputImage = InputImage.fromFilePath(image.path);
     final textRecognizer = TextRecognizer();

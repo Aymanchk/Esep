@@ -5,13 +5,11 @@ import '../theme/app_theme.dart';
 class GlassBottomNavBar extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final int chatBadge;
 
   const GlassBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
-    this.chatBadge = 0,
   });
 
   @override
@@ -27,7 +25,6 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar>
     _TabDef(Icons.history_rounded, Icons.history_rounded, 'История'),
     _TabDef(Icons.account_balance_wallet_rounded,
         Icons.account_balance_wallet_rounded, 'Долги'),
-    _TabDef(Icons.chat_bubble_rounded, Icons.chat_bubble_rounded, 'Чат'),
     _TabDef(Icons.person_rounded, Icons.person_rounded, 'Профиль'),
   ];
 
@@ -69,12 +66,10 @@ class _GlassBottomNavBarState extends State<GlassBottomNavBar>
             child: Row(
               children: List.generate(_tabs.length, (i) {
                 final isActive = i == widget.currentIndex;
-                final showBadge = i == 3 && widget.chatBadge > 0;
                 return Expanded(
                   child: _NavItem(
                     tab: _tabs[i],
                     isActive: isActive,
-                    badge: showBadge ? widget.chatBadge : 0,
                     orbController: _orbController,
                     onTap: () => widget.onTap(i),
                   ),
@@ -98,14 +93,12 @@ class _TabDef {
 class _NavItem extends StatelessWidget {
   final _TabDef tab;
   final bool isActive;
-  final int badge;
   final AnimationController orbController;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.tab,
     required this.isActive,
-    required this.badge,
     required this.orbController,
     required this.onTap,
   });
@@ -118,44 +111,18 @@ class _NavItem extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                transitionBuilder: (child, anim) => FadeTransition(
-                  opacity: anim,
-                  child: ScaleTransition(scale: anim, child: child),
-                ),
-                child: Icon(
-                  tab.activeIcon,
-                  key: ValueKey(isActive),
-                  size: 24,
-                  color: isActive ? AppTheme.primary : AppTheme.textSecondary,
-                ),
-              ),
-              if (badge > 0)
-                Positioned(
-                  top: -6,
-                  right: -10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppTheme.danger,
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: Text(
-                      '$badge',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: ScaleTransition(scale: anim, child: child),
+            ),
+            child: Icon(
+              tab.activeIcon,
+              key: ValueKey(isActive),
+              size: 24,
+              color: isActive ? AppTheme.primary : AppTheme.textSecondary,
+            ),
           ),
           const SizedBox(height: 3),
           AnimatedOpacity(

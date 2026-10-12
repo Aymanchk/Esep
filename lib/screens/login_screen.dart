@@ -13,11 +13,17 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+enum LoginStep { phone, otp, email }
+
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
+
+  LoginStep _step = LoginStep.phone;
   bool _obscurePassword = true;
   late AnimationController _floatController;
   late Animation<double> _floatAnim;
@@ -38,6 +44,8 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _phoneController.dispose();
+    _otpController.dispose();
     _floatController.dispose();
     super.dispose();
   }
@@ -51,6 +59,31 @@ class _LoginScreenState extends State<LoginScreen>
       password: _passwordController.text,
     );
 
+    if (success && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeShell()),
+      );
+    }
+  }
+
+  Future<void> _sendOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+    final auth = context.read<AuthProvider>();
+    final ok = await auth.sendOtp(_phoneController.text.trim());
+    if (ok && mounted) {
+      setState(() {
+        _step = LoginStep.otp;
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+    final auth = context.read<AuthProvider>();
+    final success = await auth.verifyOtp(
+      _phoneController.text.trim(),
+      _otpController.text.trim(),
+    );
     if (success && mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeShell()),
@@ -118,16 +151,16 @@ class _LoginScreenState extends State<LoginScreen>
                           shaderCallback: (bounds) =>
                               AppTheme.primaryGradient.createShader(bounds),
                           child: Text(
-                            'Fair Splitter',
+                            'Esep',
                             style: AppTheme.headingStyle(fontSize: 34).copyWith(
                               color: Colors.white,
                             ),
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Войдите в аккаунт',
-                          style: TextStyle(
+                        Text(
+                          _step == LoginStep.otp ? 'Подтверждение кода' : 'Войдите в аккаунт',
+                          style: const TextStyle(
                             fontSize: 15,
                             color: AppTheme.textSecondary,
                           ),
@@ -161,52 +194,98 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               child: Column(
                                 children: [
-                                  TextFormField(
-                                    controller: _emailController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Email',
-                                      hintText: 'email@example.com',
-                                      prefixIcon:
-                                          Icon(Icons.email_outlined),
-                                    ),
-                                    keyboardType:
-                                        TextInputType.emailAddress,
-                                    style: const TextStyle(
-                                        color: AppTheme.textPrimary),
-                                    validator: (v) {
-                                      if (v == null || v.trim().isEmpty) {
-                                        return 'Введите email';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _passwordController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Пароль',
-                                      hintText: 'Введите пароль',
-                                      prefixIcon:
-                                          const Icon(Icons.lock_outline),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(_obscurePassword
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined),
-                                        onPressed: () => setState(() =>
-                                            _obscurePassword =
-                                                !_obscurePassword),
+                                  if (_step == LoginStep.phone) ...[
+                                    TextFormField(
+                                      key: const ValueKey('phone_field'),
+                                      controller: _phoneController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Номер телефона',
+                                        hintText: '+996 700 123 456',
+                                        prefixIcon: Icon(Icons.phone_rounded),
                                       ),
+                                      keyboardType: TextInputType.phone,
+                                      style: const TextStyle(color: AppTheme.textPrimary),
+                                      validator: (v) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'Введите номер телефона';
+                                        }
+                                        return null;
+                                      },
                                     ),
-                                    obscureText: _obscurePassword,
-                                    style: const TextStyle(
-                                        color: AppTheme.textPrimary),
-                                    validator: (v) {
-                                      if (v == null || v.isEmpty) {
-                                        return 'Введите пароль';
-                                      }
-                                      return null;
-                                    },
-                                  ),
+                                  ] else if (_step == LoginStep.otp) ...[
+                                    Text(
+                                      'Код отправлен на ${_phoneController.text}',
+                                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 14),
+                                    TextFormField(
+                                      key: const ValueKey('otp_field'),
+                                      controller: _otpController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Код подтверждения',
+                                        hintText: 'Введите 6 цифр',
+                                        prefixIcon: Icon(Icons.lock_person_rounded),
+                                        counterText: '',
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      maxLength: 6,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontSize: 20,
+                                        letterSpacing: 6,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      validator: (v) {
+                                        if (v == null || v.length != 6) {
+                                          return 'Введите 6-значный код';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ] else ...[
+                                    TextFormField(
+                                      controller: _emailController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Email',
+                                        hintText: 'email@example.com',
+                                        prefixIcon: Icon(Icons.email_outlined),
+                                      ),
+                                      keyboardType: TextInputType.emailAddress,
+                                      style: const TextStyle(color: AppTheme.textPrimary),
+                                      validator: (v) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'Введите email';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 14),
+                                    TextFormField(
+                                      controller: _passwordController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Пароль',
+                                        hintText: 'Введите пароль',
+                                        prefixIcon: const Icon(Icons.lock_outline),
+                                        suffixIcon: IconButton(
+                                          icon: Icon(_obscurePassword
+                                              ? Icons.visibility_off_outlined
+                                              : Icons.visibility_outlined),
+                                          onPressed: () => setState(() =>
+                                              _obscurePassword = !_obscurePassword),
+                                        ),
+                                      ),
+                                      obscureText: _obscurePassword,
+                                      style: const TextStyle(color: AppTheme.textPrimary),
+                                      validator: (v) {
+                                        if (v == null || v.isEmpty) {
+                                          return 'Введите пароль';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ],
                                   if (auth.error != null)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 10),
@@ -227,7 +306,17 @@ class _LoginScreenState extends State<LoginScreen>
 
                         // Login button
                         GestureDetector(
-                          onTap: auth.isLoading ? null : _login,
+                          onTap: auth.isLoading
+                              ? null
+                              : () {
+                                  if (_step == LoginStep.phone) {
+                                    _sendOtp();
+                                  } else if (_step == LoginStep.otp) {
+                                    _verifyOtp();
+                                  } else {
+                                    _login();
+                                  }
+                                },
                           child: Container(
                             width: double.infinity,
                             height: 54,
@@ -253,26 +342,67 @@ class _LoginScreenState extends State<LoginScreen>
                                         color: Color(0xFF1A1A1A),
                                       ),
                                     )
-                                  : const Row(
+                                  : Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
                                         Text(
-                                          'Войти',
-                                          style: TextStyle(
+                                          _step == LoginStep.phone
+                                              ? 'Получить код'
+                                              : _step == LoginStep.otp
+                                                  ? 'Подтвердить'
+                                                  : 'Войти',
+                                          style: const TextStyle(
                                             color: Color(0xFF1A1A1A),
                                             fontSize: 16,
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
-                                        SizedBox(width: 8),
-                                        Icon(Icons.arrow_forward_rounded,
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.arrow_forward_rounded,
                                             color: Color(0xFF1A1A1A), size: 18),
                                       ],
                                     ),
                             ),
                           ),
                         ),
+                        const SizedBox(height: 20),
+
+                        // Alternate login actions
+                        if (_step == LoginStep.otp)
+                          GestureDetector(
+                            onTap: () => setState(() => _step = LoginStep.phone),
+                            child: const Text(
+                              'Изменить номер телефона',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )
+                        else if (_step == LoginStep.phone)
+                          GestureDetector(
+                            onTap: () => setState(() => _step = LoginStep.email),
+                            child: const Text(
+                              'Войти по Email',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )
+                        else
+                          GestureDetector(
+                            onTap: () => setState(() => _step = LoginStep.phone),
+                            child: const Text(
+                              'Войти по номеру телефона',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+
                         const SizedBox(height: 20),
 
                         Row(

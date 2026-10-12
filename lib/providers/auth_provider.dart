@@ -103,6 +103,78 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> sendOtp(String phone) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _api.sendOtp(phone);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = 'Нет подключения к серверу';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtp(String phone, String code) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final result = await _api.verifyOtp(phone, code);
+      _api.setToken(result['token'] as String);
+      _setUserFromMap(result['user'] as Map<String, dynamic>);
+      _isLoggedIn = true;
+      _isGuest = false;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = 'Нет подключения к серверу';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> tryTelegramAutoLogin(String initData) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final result = await _api.loginWithTelegram(initData);
+      _api.setToken(result['token'] as String);
+      _setUserFromMap(result['user'] as Map<String, dynamic>);
+      _isLoggedIn = true;
+      _isGuest = false;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Не удалось войти через Telegram';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateProfile({String? name, String? email, String? phone}) async {
     _isLoading = true;
     notifyListeners();

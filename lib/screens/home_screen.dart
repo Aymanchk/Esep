@@ -443,10 +443,15 @@ class _BillCard extends StatelessWidget {
       try {
         final date = DateTime.parse(createdAt);
         final diff = DateTime.now().difference(date);
-        if (diff.inDays == 0) dateStr = 'Сегодня';
-        else if (diff.inDays == 1) dateStr = 'Вчера';
-        else if (diff.inDays < 7) dateStr = '${diff.inDays} дн. назад';
-        else dateStr = DateFormat('d MMM').format(date);
+        if (diff.inDays == 0) {
+          dateStr = 'Сегодня';
+        } else if (diff.inDays == 1) {
+          dateStr = 'Вчера';
+        } else if (diff.inDays < 7) {
+          dateStr = '${diff.inDays} дн. назад';
+        } else {
+          dateStr = DateFormat('d MMM').format(date);
+        }
       } catch (_) {}
     }
 

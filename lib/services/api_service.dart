@@ -75,6 +75,36 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  Future<Map<String, dynamic>> sendOtp(String phone) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/auth/otp/send/'),
+      headers: _headers,
+      body: jsonEncode({'phone': phone}),
+    ).timeout(_timeout);
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> verifyOtp(String phone, String code) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/auth/otp/verify/'),
+      headers: _headers,
+      body: jsonEncode({
+        'phone': phone,
+        'code': code,
+      }),
+    ).timeout(_timeout);
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> loginWithTelegram(String initData) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/auth/telegram/'),
+      headers: _headers,
+      body: jsonEncode({'initData': initData}),
+    ).timeout(_timeout);
+    return _handleResponse(response);
+  }
+
   Future<Map<String, dynamic>> getProfile() async {
     final response = await http.get(
       Uri.parse('$_baseUrl/auth/me/'),
@@ -139,6 +169,7 @@ class ApiService {
     String? category,
     String? currency,
     String? splitMode,
+    List<Map<String, dynamic>>? debts,
   }) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/bills/'),
@@ -153,6 +184,7 @@ class ApiService {
         if (category != null) 'category': category,
         if (currency != null) 'currency': currency,
         if (splitMode != null) 'split_mode': splitMode,
+        if (debts != null) 'debts': debts,
       }),
     ).timeout(_timeout);
     return _handleResponse(response);
@@ -174,51 +206,22 @@ class ApiService {
     return response.statusCode == 200 || response.statusCode == 204;
   }
 
-  // --- Chat ---
+  // --- OCR Scan ---
 
-  Future<List<Map<String, dynamic>>> getChatRooms() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/chat/rooms/'),
-      headers: _headers,
-    ).timeout(_timeout);
+  Future<List<Map<String, dynamic>>> scanReceipt(File imageFile) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_baseUrl/ocr/scan/'),
+    );
+    request.headers.addAll(_authHeaders);
+    request.files.add(
+      await http.MultipartFile.fromPath('image', imageFile.path),
+    );
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
     final body = _handleResponse(response);
-    return List<Map<String, dynamic>>.from(body['results'] ?? body['rooms'] ?? []);
-  }
-
-  Future<Map<String, dynamic>> createChatRoom(List<int> participantIds) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/chat/rooms/'),
-      headers: _headers,
-      body: jsonEncode({'participants': participantIds}),
-    ).timeout(_timeout);
-    return _handleResponse(response);
-  }
-
-  Future<List<Map<String, dynamic>>> getMessages(int roomId, {int? beforeId}) async {
-    var url = '$_baseUrl/chat/rooms/$roomId/messages/';
-    if (beforeId != null) url += '?before=$beforeId';
-    final response = await http.get(
-      Uri.parse(url),
-      headers: _headers,
-    ).timeout(_timeout);
-    final body = _handleResponse(response);
-    return List<Map<String, dynamic>>.from(body['messages'] ?? []);
-  }
-
-  Future<Map<String, dynamic>> sendMessage(int roomId, String text) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/chat/rooms/$roomId/send/'),
-      headers: _headers,
-      body: jsonEncode({'text': text}),
-    ).timeout(_timeout);
-    return _handleResponse(response);
-  }
-
-  Future<void> markAsRead(int roomId) async {
-    await http.post(
-      Uri.parse('$_baseUrl/chat/rooms/$roomId/read/'),
-      headers: _headers,
-    ).timeout(_timeout);
+    final items = body['items'] ?? [];
+    return List<Map<String, dynamic>>.from(items);
   }
 
   // --- Debts ---

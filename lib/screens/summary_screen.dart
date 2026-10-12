@@ -21,6 +21,7 @@ class _SummaryScreenState extends State<SummaryScreen>
   late Animation<double> _totalCountAnim;
   bool _saved = false;
   bool _saving = false;
+  final GlobalKey _shareKey = GlobalKey();
 
   @override
   void initState() {
@@ -68,12 +69,23 @@ class _SummaryScreenState extends State<SummaryScreen>
                   'quantity': i.quantity,
                 })
             .toList(),
-        people: provider.people.map((p) => {'name': p.name, 'id': p.id}).toList(),
+        people: provider.people.map((p) => {'name': p.name, 'id': p.id, 'userId': p.userId}).toList(),
         assignments: provider.unitAssignments,
         title: provider.billTitle,
         category: provider.category.id,
         currency: provider.currency.code,
         splitMode: provider.splitMode.name,
+        debts: provider.people
+            .where((p) => p.userId != null && p.userId != auth.userId)
+            .map((p) => {
+                  'from_user_id': p.userId,
+                  'to_user_id': auth.userId,
+                  'amount': provider.getPersonTotal(p.id),
+                  'description': provider.billTitle.isNotEmpty
+                      ? provider.billTitle
+                      : 'Разделение счёта',
+                })
+            .toList(),
       );
       if (mounted) {
         setState(() {
@@ -124,6 +136,8 @@ class _SummaryScreenState extends State<SummaryScreen>
               right: -50,
               child: _Blob(color: const Color(0xFFA78BFA), size: 160),
             ),
+
+            _buildHiddenShareCard(provider),
 
             SafeArea(
               child: Column(
@@ -424,6 +438,44 @@ class _SummaryScreenState extends State<SummaryScreen>
                             height: 52,
                             child: DecoratedBox(
                               decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFA78BFA),
+                                    Color(0xFF818CF8),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFA78BFA).withValues(alpha: 0.4),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: FilledButton.icon(
+                                onPressed: () => ShareHelper.shareBillImage(_shareKey),
+                                icon: const Icon(Icons.image_rounded, size: 18, color: Colors.white),
+                                label: const Text(
+                                  'Поделиться картинкой чека',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
                                 gradient: AppTheme.primaryGradient,
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
@@ -524,6 +576,145 @@ class _SummaryScreenState extends State<SummaryScreen>
 
   int _sharedCount(BillProvider p) =>
       p.items.where((i) => p.getPeopleForItem(i.id).length > 1).length;
+
+  Widget _buildHiddenShareCard(BillProvider provider) {
+    final sym = provider.currency.symbol;
+    return Positioned(
+      left: -9999,
+      top: 0,
+      child: RepaintBoundary(
+        key: _shareKey,
+        child: Container(
+          width: 375,
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF1E1E2E),
+                Color(0xFF11111B),
+              ],
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.primary, size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Esep',
+                        style: AppTheme.headingStyle(fontSize: 22).copyWith(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: provider.category.color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      provider.category.name.toUpperCase(),
+                      style: TextStyle(
+                        color: provider.category.color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'ИТОГО К ОПЛАТЕ',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${provider.total.toStringAsFixed(0)} $sym',
+                style: AppTheme.moneyStyle(fontSize: 40),
+              ),
+              if (provider.serviceChargeEnabled) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'включая ${provider.serviceChargePercent.toStringAsFixed(0)}% обслуживания '
+                  '(${provider.serviceChargeAmount.toStringAsFixed(0)} $sym)',
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                ),
+              ],
+              const SizedBox(height: 24),
+              Container(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+              const SizedBox(height: 20),
+              const Text(
+                'КТО СКОЛЬКО ДОЛЖЕН',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+              ),
+              const SizedBox(height: 12),
+              ...provider.people.map((person) {
+                final total = provider.getPersonTotal(person.id);
+                final items = provider.getPersonItems(person.id);
+                final itemNames = items.map((i) => i.name).join(', ');
+                return Padding(
+                   padding: const EdgeInsets.symmetric(vertical: 8),
+                   child: Row(
+                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Expanded(
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             Text(
+                               person.name,
+                               style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                             ),
+                             if (itemNames.isNotEmpty) ...[
+                               const SizedBox(height: 2),
+                               Text(
+                                 itemNames,
+                                 style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                                 maxLines: 1,
+                                 overflow: TextOverflow.ellipsis,
+                               ),
+                             ],
+                           ],
+                         ),
+                       ),
+                       Text(
+                         '${total.toStringAsFixed(0)} $sym',
+                         style: const TextStyle(color: AppTheme.primary, fontSize: 16, fontWeight: FontWeight.bold),
+                       ),
+                     ],
+                   ),
+                 );
+              }),
+              const SizedBox(height: 24),
+              Container(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  'Разделено с умом через Esep',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                    fontSize: 10,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Sub-widgets ──────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/debt_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
@@ -508,12 +509,31 @@ class _DebtsScreenState extends State<DebtsScreen>
     );
   }
 
+  void _launchPaymentUrl(String phone, double amount) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
+    final urlStr = 'https://mbank.kg/pay?phone=$cleanPhone&amount=${amount.toStringAsFixed(0)}';
+    final uri = Uri.parse(urlStr);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (_) {
+      // Fallback
+    }
+  }
+
   void _showQRModal(Map<String, dynamic> debt) {
     final amount = _asDouble(debt['amount']);
     final from = Map<String, dynamic>.from(debt['from_user'] as Map? ?? {});
     final to = Map<String, dynamic>.from(debt['to_user'] as Map? ?? {});
-    final qrData =
-        'fairsplitter://pay?amount=${amount.toStringAsFixed(0)}&from=${from['name']}&to=${to['name']}';
+    final toPhone = to['phone']?.toString() ?? '';
+    final cleanPhone = toPhone.replaceAll(RegExp(r'[^\d]'), '');
+    
+    final qrData = toPhone.isNotEmpty
+        ? 'https://mbank.kg/pay?phone=$cleanPhone&amount=${amount.toStringAsFixed(0)}'
+        : 'esep://pay?amount=${amount.toStringAsFixed(0)}&from=${from['name']}&to=${to['name']}';
 
     showModalBottomSheet(
       context: context,
@@ -569,12 +589,41 @@ class _DebtsScreenState extends State<DebtsScreen>
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Отсканируйте для перевода через Мбанк или О!Деньги',
+            Text(
+              toPhone.isNotEmpty
+                  ? 'Отсканируйте камерой для оплаты или откройте в приложении'
+                  : 'Отсканируйте для перевода через Мбанк или О!Деньги',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
             ),
-            const SizedBox(height: 20),
+            if (toPhone.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF22D3EE), Color(0xFF34D399)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: FilledButton.icon(
+                    onPressed: () => _launchPaymentUrl(toPhone, amount),
+                    icon: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF1A1A1A), size: 18),
+                    label: const Text(
+                      'Открыть в MBANK',
+                      style: TextStyle(color: Color(0xFF1A1A1A), fontWeight: FontWeight.bold),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 50,
